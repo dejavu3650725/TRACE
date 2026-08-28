@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Footer } from "@/components/shell/Footer";
 import { TraceWordmark } from "@/components/shell/TraceWordmark";
 import { GoogleLoginButton } from "./GoogleLoginButton";
 
@@ -11,7 +12,8 @@ export const metadata: Metadata = { title: "로그인" };
  */
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen flex-col bg-background">
+      <main className="flex flex-1 items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-8 text-center shadow-[var(--shadow-card)]">
         <div className="flex justify-center">
           <TraceWordmark href="/" />
@@ -28,9 +30,11 @@ export default function LoginPage() {
           <GoogleLoginButton />
         </div>
         <p className="mt-6 text-xs text-muted">
-          계속 진행하면 개인정보처리방침에 동의하는 것으로 간주돼요.
+          계속 진행하면 이용약관과 개인정보처리방침에 동의하는 것으로 간주돼요.
         </p>
       </div>
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }
