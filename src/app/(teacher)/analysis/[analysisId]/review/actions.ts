@@ -79,11 +79,11 @@ export async function submitReview(
       : decision === "EDITED_APPROVED"
         ? "ANALYSIS_EDIT_APPROVE"
         : "ANALYSIS_REJECT";
-  await supabase.from("audit_logs").insert({
-    actor_teacher_id: teacher.id,
-    action: auditAction,
-    entity_type: "analysis",
-    entity_id: analysisId,
+  // 0004 이후 직접 INSERT 금지 — 고정형 RPC 사용 (0005)
+  await supabase.rpc("record_analysis_event", {
+    p_action: auditAction,
+    p_entity_type: "analysis",
+    p_entity_id: analysisId,
   });
 
   redirect("/analysis");

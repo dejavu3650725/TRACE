@@ -78,14 +78,12 @@ export async function POST(request: Request) {
     return envelope(500, null, { code: "JOB_CREATE_FAILED", message: "작업 생성에 실패했습니다." });
   }
 
-  // Audit Log (TRD §16.14) — PII/답안 전문 저장 금지
-  await supabase.from("audit_logs").insert({
-    actor_teacher_id: teacher.id,
-    action: "ANALYSIS_START",
-    entity_type: "processing_job",
-    entity_id: job.id,
-    request_id: requestId,
-    metadata_json: { submission_count: submissionIds.length },
+  // Audit Log (TRD §16.14) — 0004 이후 직접 INSERT 금지, 고정형 RPC 사용 (0005)
+  await supabase.rpc("record_analysis_event", {
+    p_action: "ANALYSIS_START",
+    p_entity_type: "processing_job",
+    p_entity_id: job.id,
+    p_request_id: requestId,
   });
 
   // 백그라운드 병렬 분석 (TRD §28) — 응답은 즉시 반환하고, 분석은 응답 후 서버에서 계속된다.
