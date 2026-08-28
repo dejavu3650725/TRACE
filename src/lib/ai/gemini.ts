@@ -16,7 +16,7 @@ import { getGeminiApiKey } from "./provider";
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export function getGeminiModel(): string {
-  return process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+  return process.env.GEMINI_MODEL ?? "gemini-3.6-flash";
 }
 
 export interface AnalyzeInput {
