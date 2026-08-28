@@ -622,6 +622,10 @@ source_artifact_id
 
 Batch PDF 원본 Binary는 Storage에 한 번 저장한다.
 
+학생 매칭 전 Batch 원본/페이지 참조는 `artifacts.owner_teacher_id`로
+Teacher 소유권을 확인한다. 이때 `submission_id`는 null이며, 매칭 후 생성되는
+Submission 참조 Artifact는 `source_artifact_id`로 Batch ORIGINAL을 추적한다.
+
 학생별 Submission은 필요 시 동일 `storage_path`와:
 
 ```text
@@ -899,6 +903,7 @@ UNIQUE(student_id, activity_assignment_id)
 ```text
 id uuid PK
 submission_id uuid FK → submissions.id nullable
+owner_teacher_id uuid FK → teachers.id nullable
 source_artifact_id uuid FK → artifacts.id nullable
 storage_path text NOT NULL
 file_name text NOT NULL
@@ -911,6 +916,10 @@ page_start integer nullable
 page_end integer nullable
 created_at timestamptz
 ```
+
+Artifact는 `submission_id` 또는 `owner_teacher_id` 중 정확히 하나의 소유권
+경로를 가져야 한다. 기존 Submission Artifact는 `submission_id`, 학생 매칭 전
+Batch/Activity Artifact는 `owner_teacher_id`를 사용한다.
 
 ## 16.9 analyses
 

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/shell/PageHeader";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "학생 명단 등록" };
 
@@ -10,13 +9,6 @@ export const metadata: Metadata = { title: "학생 명단 등록" };
  * Owner: Shared + INPUT
  */
 export default function OnboardingRosterPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="학생 명단 등록" description="번호와 이름만 있으면 돼요. (2/2)" />
-      <EmptyState
-        title="명단 등록 화면 준비 중"
-        description="TRACE 표준 템플릿 업로드 또는 직접 추가를 지원해요."
-      />
-    </div>
-  );
+  // Roster는 Class에 종속되므로, Class 선택 후 단일 상세 화면에서 직접 관리한다.
+  redirect("/classes");
 }

@@ -353,6 +353,23 @@ export class CurriculumLoader {
     return this.#achievementLevelsByStandardId.get(normalizeStandardId(standardId)) ?? null;
   }
 
+  listStandardSubjects(grade?: string): string[] {
+    return [...new Set(
+      this.snapshot.standards
+        .filter((standard) => grade === undefined || standard.grade === grade)
+        .map((standard) => standard.subject),
+    )].sort((left, right) => left.localeCompare(right, "ko-KR"));
+  }
+
+  listStandardDomains(input: { grade?: string; subject?: string } = {}): string[] {
+    return [...new Set(
+      this.snapshot.standards
+        .filter((standard) => input.grade === undefined || standard.grade === input.grade)
+        .filter((standard) => input.subject === undefined || standard.subject === input.subject)
+        .map((standard) => standard.domain),
+    )].sort((left, right) => left.localeCompare(right, "ko-KR"));
+  }
+
   findStandards(input: FindStandardsInput = {}): CurriculumStandard[] {
     const limit = input.limit ?? 20;
 

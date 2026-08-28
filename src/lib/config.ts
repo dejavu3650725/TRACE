@@ -33,4 +33,6 @@ export const STORAGE = {
     `teachers/${teacherId}/submissions/${submissionId}/processed/${artifactUuid}.${ext}`,
   activitySourcePath: (teacherId: string, activityId: string, artifactUuid: string, ext: string) =>
     `teachers/${teacherId}/activities/${activityId}/source/${artifactUuid}.${ext}`,
+  teacherBatchOriginalPath: (teacherId: string, artifactUuid: string) =>
+    `teachers/${teacherId}/batches/${artifactUuid}/original/${artifactUuid}.pdf`,
 } as const;

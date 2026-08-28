@@ -124,8 +124,54 @@ p, li, dd {
 .animate-rise {
   animation: rise 0.65s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
+/* 차트 등장 모션 — 대시보드 */
+@keyframes draw-line {
+  to { stroke-dashoffset: 0; }
+}
+.animate-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw-line 1.1s 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes fade-late {
+  to { opacity: 1; }
+}
+.animate-fade-late {
+  opacity: 0;
+  animation: fade-late 0.6s 1.05s ease forwards;
+}
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+}
+.animate-grow-x {
+  transform-origin: left center;
+  animation: grow-x 0.9s 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes radar-pop {
+  from { opacity: 0; transform: scale(0.4); }
+}
+.animate-radar {
+  transform-box: view-box;
+  transform-origin: 50% 49%;
+  animation: radar-pop 0.9s 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes badge-pop {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+}
+.animate-badge {
+  animation: badge-pop 2.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-rise { animation: none; }
+  .animate-rise, .animate-badge { animation: none; }
+  .animate-draw, .animate-fade-late, .animate-grow-x, .animate-radar {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* 얇은 스크롤바 (데스크톱 교사 화면) */

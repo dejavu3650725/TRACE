@@ -30,25 +30,25 @@ export function Sidebar() {
   const adminActive = pathname === "/admin" || pathname.startsWith("/admin/");
 
   return (
-    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-line bg-surface">
-      <div className="flex h-16 items-center px-6">
+    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-line bg-surface">
+      <div className="flex h-20 items-center px-6">
         <TraceWordmark />
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2">
+      <nav className="flex-1 space-y-1.5 overflow-y-auto px-4 py-3">
         {MAIN_NAV.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 ${
+              className={`flex items-center gap-3.5 rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-colors duration-200 ${
                 active
-                  ? "bg-brand-50 text-brand-700"
+                  ? "bg-brand-50 text-brand-700 shadow-[inset_0_0_0_1px_var(--brand-100)]"
                   : "text-muted hover:bg-neutral-bg hover:text-foreground"
               }`}
             >
-              <Icon className="h-[18px] w-[18px]" />
+              <Icon className="h-5 w-5" />
               {label}
             </Link>
           );
@@ -56,16 +56,16 @@ export function Sidebar() {
       </nav>
 
       {/* 관리자 — 학교 단위 운영 관리 콘솔 */}
-      <div className="border-t border-line px-3 py-3">
+      <div className="border-t border-line px-4 py-4">
         <Link
           href="/admin"
-          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 ${
+          className={`flex items-center gap-3.5 rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-colors duration-200 ${
             adminActive
-              ? "bg-brand-50 text-brand-700"
+              ? "bg-brand-50 text-brand-700 shadow-[inset_0_0_0_1px_var(--brand-100)]"
               : "text-muted hover:bg-neutral-bg hover:text-foreground"
           }`}
         >
-          <ShieldCheck className="h-[18px] w-[18px]" />
+          <ShieldCheck className="h-5 w-5" />
           관리자
         </Link>
       </div>

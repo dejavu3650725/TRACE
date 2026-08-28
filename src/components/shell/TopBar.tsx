@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Bell, CircleHelp, ChevronDown, Plus, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -73,19 +74,24 @@ export function TopBar({
           />
         </label>
 
-        {/* Notification — 검토 대기 건수 Badge */}
-        <button
-          type="button"
+        {/* Notification — 검토 대기 건수 Badge, 클릭 시 검토 대기 목록으로 이동 */}
+        <Link
+          href="/analysis"
           className="relative rounded-xl p-2 text-muted transition-colors duration-200 hover:bg-neutral-bg hover:text-foreground"
-          aria-label={`알림 · 검토 대기 ${reviewPendingCount}건`}
+          aria-label={`알림 · 검토 대기 ${reviewPendingCount}건 — 검토하러 가기`}
+          title={
+            reviewPendingCount > 0
+              ? `검토 대기 ${reviewPendingCount}건 — 검토하러 가기`
+              : "검토 대기 없음"
+          }
         >
           <Bell className="h-5 w-5" />
           {reviewPendingCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+            <span className="animate-badge absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
               {reviewPendingCount > 99 ? "99+" : reviewPendingCount}
             </span>
           )}
-        </button>
+        </Link>
 
         {/* Help */}
         <button
