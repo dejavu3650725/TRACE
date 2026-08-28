@@ -277,8 +277,8 @@ Missing or risky behavior relative to ISSUE-03:
 
 ## 8. AI, curriculum, capture, and file-processing analysis
 
-- `src/lib/ai/provider.ts` is only an interface stub and API-key accessor. It does not implement a provider request, schema validation, activity generation, privacy context builder, or observable-response extraction.
-- The repository currently names Gemini in README/environment configuration even though the current PRD/TRD leave the final provider/model behind an adapter. Provider selection must be treated as configuration, not a new shared contract.
+- ISSUE-24 adds a shared server-only Privacy Context Builder and provider-independent VLM adapter. Activity generation and PROCESS submission analysis both pass a privacy-sealed request through that boundary; Provider success/error metadata is normalized and raw error bodies are not propagated.
+- Gemini remains the configured hackathon Provider behind `AI_PROVIDER`/`GEMINI_MODEL`; this is environment configuration rather than a shared-contract change. The browser bundle is checked against the configured secret after production builds.
 - No `shared/curriculum/manifest.json` or curriculum JSON files are present.
 - No StructuredInput runtime schema exists; there is only a broad TypeScript interface.
 - No upload API, signed-URL helper, checksum/idempotency handling, image preprocessing, spreadsheet parser, QR generation, PDF handling, or processing-job polling exists.
