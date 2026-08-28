@@ -145,27 +145,22 @@ p, li, dd {
   display: none;
 }
 
-@page {
-  size: A4 portrait;
-  margin: 12mm;
-}
-
 @media print {
-  html,
-  body {
+  html:has(#report-print-root),
+  body:has(#report-print-root) {
     background: var(--surface);
   }
 
-  body * {
+  body:has(#report-print-root) * {
     visibility: hidden;
   }
 
-  #report-print-root,
-  #report-print-root * {
+  body:has(#report-print-root) #report-print-root,
+  body:has(#report-print-root) #report-print-root * {
     visibility: visible;
   }
 
-  #report-print-root {
+  body:has(#report-print-root) #report-print-root {
     position: absolute;
     inset: 0 auto auto 0;
     width: 100%;
@@ -176,19 +171,19 @@ p, li, dd {
     line-break: strict;
   }
 
-  .no-print {
+  body:has(#report-print-root) .no-print {
     display: none !important;
   }
 
-  .print-only {
+  body:has(#report-print-root) .print-only {
     display: block;
   }
 
-  .print-break-inside-avoid {
+  body:has(#report-print-root) .print-break-inside-avoid {
     break-inside: avoid;
   }
 
-  a {
+  body:has(#report-print-root) a {
     color: inherit;
     text-decoration: none;
   }
