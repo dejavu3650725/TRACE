@@ -1,7 +1,8 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { analyzeSubmissionWithGemini, getGeminiModel } from "@/lib/ai/gemini";
+import { analyzeSubmissionWithVlm } from "@/lib/ai/submission-analysis";
+import { getVlmAdapter } from "@/lib/ai/vlm-adapter";
 import { getStandards } from "@/lib/curriculum/loader";
 import { STORAGE } from "@/lib/config";
 import type { StructuredInput } from "@/shared/types/db";
@@ -95,12 +96,13 @@ export async function analyzeOneSubmission(
     }
 
     // 4. AI 분석
-    const result = await analyzeSubmissionWithGemini({
+    const adapter = getVlmAdapter();
+    const result = await analyzeSubmissionWithVlm({
       structuredInput: (submission.structured_input as StructuredInput | null) ?? null,
       images,
       activity: { title: activity.title, description: activity.description },
       standards,
-    });
+    }, adapter);
 
     // 5. 저장 — analyses (버전 INSERT) + evidence
     const nextVersion = (latest?.version_no ?? 0) + 1;
@@ -111,8 +113,8 @@ export async function analyzeOneSubmission(
         version_no: nextVersion,
         analysis_json: result,
         status: "AI_DRAFT",
-        provider: "google",
-        model: getGeminiModel(),
+        provider: adapter.provider,
+        model: adapter.model,
       })
       .select("id")
       .single();

@@ -20,7 +20,7 @@ type Row = { id: string };
 type StudentRow = Row & { class_id: string };
 type AssignmentRow = Row & { activity_id: string; class_id: string };
 type SubmissionRow = Row & { student_id: string; activity_assignment_id: string };
-type ArtifactRow = Row & { submission_id: string | null };
+type ArtifactRow = Row & { submission_id: string | null; owner_teacher_id: string | null };
 type AnalysisRow = Row & { submission_id: string };
 
 const UUID_PATTERN =
@@ -114,14 +114,17 @@ async function ownedSubmission(context: Context, id: string) {
 async function ownedArtifact(context: Context, id: string) {
   const { data, error } = await context.supabase
     .from("artifacts")
-    .select("id, submission_id")
+    .select("id, submission_id, owner_teacher_id")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error("Artifact ownership check failed", { cause: error });
   if (!data) throw new ResourceForbiddenError();
   const row = data as ArtifactRow;
-  if (!row.submission_id) throw new ResourceForbiddenError();
-  await ownedSubmission(context, row.submission_id);
+  if (row.submission_id) {
+    await ownedSubmission(context, row.submission_id);
+  } else if (row.owner_teacher_id !== context.teacher.id) {
+    throw new ResourceForbiddenError();
+  }
   return row;
 }
 

@@ -915,6 +915,11 @@ batch.pdf
 
 Artifact는 Shared Core에서 정의한 PDF Page Range 참조를 지원한다.
 
+학생 매칭 전에는 Batch ORIGINAL과 미확정 Page Range Artifact를
+`owner_teacher_id`로 현재 Teacher에게 귀속한다. 학생 매칭 후에는 같은
+`storage_path`와 `source_artifact_id`를 사용하는 Submission별 논리 참조만
+추가하며 PDF Binary를 다시 업로드하지 않는다.
+
 ---
 
 # 11. CSV/XLSX Import

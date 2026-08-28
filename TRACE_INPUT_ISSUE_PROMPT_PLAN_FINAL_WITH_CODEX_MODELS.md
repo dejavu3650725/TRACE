@@ -949,7 +949,7 @@ AI 없이 Activity를 생성/수정하고 Standard를 연결하며, 연계 차�
 ### 선행 조건
 
 ```text
-ISSUE-04
+ISSUE-04s
 ISSUE-05
 ```
 
@@ -976,7 +976,6 @@ Reasoning: high
 
 ```text
 Implement non-AI Activity CRUD.
-
 Requirements:
 1. Structured Activity creation.
 2. Optional metadata remains optional.
@@ -2083,6 +2082,14 @@ Acceptance:
 - one real provider request succeeds when credentials exist.
 ```
 
+### 구현 메모 (2026-08-29)
+
+- 공통 서버 전용 `Privacy Context Builder → VLM Adapter → Provider` 경계를 구현했다.
+- 활동 초안 생성과 PROCESS 제출 분석은 Feature 내부 Provider HTTP 호출을 제거하고 같은 어댑터를 사용한다.
+- 허용 목록 기반 Context 구성 후 이메일·전화번호·명단·학급 표시명·영구 UUID 등 잔여 PII 패턴을 보수적으로 차단한다.
+- Hackathon Provider는 `AI_PROVIDER=gemini`, 모델은 `GEMINI_MODEL`로 선택하며 Google Gemini API Key는 서버 어댑터만 읽는다.
+- Provider 오류 본문·Prompt·Secret은 반환/로그 Metadata에 포함하지 않는다. 이미지 자동 PII Redaction은 문서대로 Production Gate에 남긴다.
+
 ### 테스트
 
 ```text
@@ -2495,6 +2502,12 @@ Requirements:
 - provide page rendering/reference for downstream processing,
 - represent page_start/page_end on Artifact records,
 - do not duplicate the entire PDF per Student.
+
+Approved shared-contract decision (2026-08-29):
+- add nullable `artifacts.owner_teacher_id` for pre-matching Teacher-owned Artifacts,
+- require exactly one ownership path: `submission_id` or `owner_teacher_id`,
+- keep one Teacher-owned Batch ORIGINAL and store page ranges as logical Artifact references,
+- after matching, reference the same object with `source_artifact_id`; never duplicate the PDF Binary.
 
 Acceptance:
 - original remains one source object,
