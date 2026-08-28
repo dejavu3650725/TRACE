@@ -43,7 +43,14 @@ function gradeBandFor(grade: number | null): string {
   return "3~4학년";
 }
 
-const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
+const ALLOWED_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/pdf", // Gemini가 PDF를 네이티브로 읽는다 (inlineData)
+]);
 
 export async function createQrFromWorksheet(
   _prev: QuickQrState,
@@ -56,11 +63,12 @@ export async function createQrFromWorksheet(
   if (!classId || !(photo instanceof File) || photo.size === 0) {
     return { status: "error", message: "학급을 선택하고 활동지 사진을 올려주세요." };
   }
-  if (!ALLOWED_MIME.has(photo.type)) {
-    return { status: "error", message: "사진 파일(JPG/PNG/WEBP/HEIC)만 올릴 수 있어요." };
+  const isPdf = photo.type === "application/pdf" || /\.pdf$/i.test(photo.name);
+  if (!ALLOWED_MIME.has(photo.type) && !isPdf) {
+    return { status: "error", message: "사진(JPG/PNG/WEBP/HEIC) 또는 PDF만 올릴 수 있어요." };
   }
   if (photo.size > FILE_LIMITS.IMAGE_MAX_BYTES) {
-    return { status: "error", message: "사진은 10MB 이하여야 해요." };
+    return { status: "error", message: "파일은 10MB 이하여야 해요." };
   }
 
   const { data: cls } = await supabase
@@ -90,7 +98,7 @@ export async function createQrFromWorksheet(
     .join("\n");
 
   const prompt = `당신은 대한민국 초등 교사의 수업 설계를 보조합니다.
-첨부된 사진은 학생에게 배포할 "빈 활동지(문제지)"입니다.
+첨부된 파일(사진 또는 PDF)은 학생에게 배포할 "빈 활동지(문제지)"입니다.
 
 임무:
 1. 활동지 내용을 읽고 활동 제목(title)과 교과(subject)를 정합니다.
@@ -108,7 +116,7 @@ ${candidateLines}
   const request = createPrivacySafeVlmRequest({
     purpose: "ACTIVITY_DRAFT",
     prompt,
-    media: [{ mimeType: photo.type, base64 }],
+    media: [{ mimeType: isPdf ? "application/pdf" : photo.type, base64 }],
     generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
     timeoutMs: 60_000,
   });

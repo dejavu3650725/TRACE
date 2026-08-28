@@ -29,8 +29,8 @@ export function QuickQrPanel({
         <Sparkles className="h-4 w-4" /> 빈 활동지로 바로 QR 만들기
       </p>
       <p className="mt-1 text-xs leading-relaxed text-muted">
-        활동지 사진을 올리면 AI가 2022 교육과정에서 맞는 성취기준을 찾아 활동을 만들고, 그 자리에서
-        학생 제출 QR을 발급해요.
+        활동지 사진이나 PDF를 올리면 AI가 2022 교육과정에서 맞는 성취기준을 찾아 활동을 만들고, 그
+        자리에서 학생 제출 QR을 발급해요.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -48,11 +48,11 @@ export function QuickQrPanel({
 
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-foreground hover:bg-neutral-bg">
           <Camera className="h-4 w-4 text-brand-600" />
-          {fileName ? `${fileName.slice(0, 18)}${fileName.length > 18 ? "…" : ""}` : "활동지 사진 선택/촬영"}
+          {fileName ? `${fileName.slice(0, 18)}${fileName.length > 18 ? "…" : ""}` : "활동지 사진/PDF 선택"}
           <input
             type="file"
             name="photo"
-            accept="image/*"
+            accept="image/*,.pdf,application/pdf"
             required
             hidden
             onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
