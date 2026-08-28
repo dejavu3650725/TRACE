@@ -39,6 +39,13 @@
   --radius-card: 1rem;
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 12px rgb(15 23 42 / 0.06);
   --shadow-card-hover: 0 2px 4px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.1);
+
+  --report-ink: #071426;
+  --report-glow: #60a5fa;
+  --report-shadow: 0 1.5rem 5rem rgb(7 20 38 / 0.22);
+  --motion-standard: 200ms;
+  --motion-emphasis: 500ms;
+  --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @theme inline {
@@ -98,6 +105,10 @@ body {
 h1, h2, h3 {
   letter-spacing: -0.015em;
   word-break: keep-all;
+}
+
+p, li, dd {
+  text-wrap: pretty;
 }
 
 /* 숫자는 고정폭 숫자로 — 대시보드 통계가 흔들리지 않게 */
@@ -174,4 +185,63 @@ h1, h2, h3 {
 }
 *::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  html:has(#report-print-root),
+  body:has(#report-print-root) {
+    background: var(--surface);
+  }
+
+  body:has(#report-print-root) * {
+    visibility: hidden;
+  }
+
+  body:has(#report-print-root) #report-print-root,
+  body:has(#report-print-root) #report-print-root * {
+    visibility: visible;
+  }
+
+  body:has(#report-print-root) #report-print-root {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    color: var(--foreground);
+    background: var(--surface);
+    word-break: keep-all;
+    overflow-wrap: normal;
+    line-break: strict;
+  }
+
+  body:has(#report-print-root) .no-print {
+    display: none !important;
+  }
+
+  body:has(#report-print-root) .print-only {
+    display: block;
+  }
+
+  body:has(#report-print-root) .print-break-inside-avoid {
+    break-inside: avoid;
+  }
+
+  body:has(#report-print-root) a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
