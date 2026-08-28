@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Bell, CircleHelp, ChevronDown, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Search, Bell, CircleHelp, ChevronDown, Plus, LogOut } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { AddMaterialModal } from "./AddMaterialModal";
 
 /**
@@ -18,6 +20,35 @@ export function TopBar({
   reviewPendingCount?: number;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // 계정 메뉴 밖 클릭/ESC 시 닫기
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
+
+  const signOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
@@ -65,17 +96,45 @@ export function TopBar({
           <CircleHelp className="h-5 w-5" />
         </button>
 
-        {/* User Menu */}
-        <button
-          type="button"
-          className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm font-semibold text-foreground transition-colors duration-200 hover:bg-neutral-bg"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
-            {displayName.slice(0, 1)}
-          </span>
-          <span className="hidden lg:inline">{displayName}</span>
-          <ChevronDown className="h-4 w-4 text-muted" />
-        </button>
+        {/* User Menu — 계정 단일 진입점 (프로필·로그아웃) */}
+        <div ref={menuRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm font-semibold text-foreground transition-colors duration-200 hover:bg-neutral-bg"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
+              {displayName.slice(0, 1)}
+            </span>
+            <span className="hidden lg:inline">{displayName}</span>
+            <ChevronDown
+              className={`h-4 w-4 text-muted transition-transform duration-200 ${menuOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {menuOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-card-hover)]"
+            >
+              <div className="border-b border-line px-4 py-3">
+                <p className="truncate text-sm font-bold text-foreground">{displayName}</p>
+                <p className="text-xs text-muted">Google 계정으로 로그인됨</p>
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={signOut}
+                className="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-foreground transition-colors duration-150 hover:bg-neutral-bg"
+              >
+                <LogOut className="h-4 w-4 text-muted" />
+                로그아웃
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* 전역 Primary Action */}
         <button

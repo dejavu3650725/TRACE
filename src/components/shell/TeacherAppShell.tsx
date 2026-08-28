@@ -18,7 +18,7 @@ export function TeacherAppShell({
 }) {
   return (
     <div className="flex min-h-screen">
-      <Sidebar displayName={displayName} />
+      <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar displayName={displayName} reviewPendingCount={reviewPendingCount} />
         <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">{children}</main>

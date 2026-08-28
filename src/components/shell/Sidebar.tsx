@@ -8,12 +8,9 @@ import {
   ClipboardCheck,
   BarChart3,
   Users,
-  Megaphone,
-  Settings,
-  CircleHelp,
+  ShieldCheck,
 } from "lucide-react";
 import { TraceWordmark } from "./TraceWordmark";
-import { SidebarAccount } from "@/components/auth/SidebarAccount";
 
 /**
  * Sidebar 확정 메뉴 (TRD §32)
@@ -28,13 +25,9 @@ const MAIN_NAV = [
   { href: "/classes", label: "클래스 관리", icon: Users },
 ] as const;
 
-const SUB_NAV = [
-  { href: "/settings", label: "설정", icon: Settings, disabled: true },
-  { href: "/help", label: "도움말", icon: CircleHelp, disabled: true },
-] as const;
-
-export function Sidebar({ displayName }: { displayName: string }) {
+export function Sidebar() {
   const pathname = usePathname();
+  const adminActive = pathname === "/admin" || pathname.startsWith("/admin/");
 
   return (
     <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-line bg-surface">
@@ -60,45 +53,22 @@ export function Sidebar({ displayName }: { displayName: string }) {
             </Link>
           );
         })}
-
-        {/* 공지사항 — 비활성(준비 중), 라우트 없음 (TRD §32) */}
-        <span
-          aria-disabled
-          className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted/50"
-        >
-          <Megaphone className="h-[18px] w-[18px]" />
-          공지사항
-          <span className="ml-auto rounded-full bg-neutral-bg px-1.5 py-0.5 text-[10px] font-bold text-muted">
-            준비 중
-          </span>
-        </span>
-
-        <div className="my-3 border-t border-line" />
-
-        {SUB_NAV.map(({ href, label, icon: Icon, disabled }) =>
-          disabled ? (
-            <span
-              key={href}
-              aria-disabled
-              className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted/50"
-            >
-              <Icon className="h-[18px] w-[18px]" />
-              {label}
-            </span>
-          ) : (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition-colors duration-200 hover:bg-neutral-bg hover:text-foreground"
-            >
-              <Icon className="h-[18px] w-[18px]" />
-              {label}
-            </Link>
-          ),
-        )}
       </nav>
 
-      <SidebarAccount displayName={displayName} />
+      {/* 관리자 — 학교 단위 운영 관리 콘솔 */}
+      <div className="border-t border-line px-3 py-3">
+        <Link
+          href="/admin"
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 ${
+            adminActive
+              ? "bg-brand-50 text-brand-700"
+              : "text-muted hover:bg-neutral-bg hover:text-foreground"
+          }`}
+        >
+          <ShieldCheck className="h-[18px] w-[18px]" />
+          관리자
+        </Link>
+      </div>
     </aside>
   );
 }
