@@ -16,7 +16,12 @@ export const dynamic = "force-dynamic";
  * 분석 가능 조건: input_status = READY_FOR_PROCESS
  * Owner: PROCESS (feat/process)
  */
-export default async function AnalysisPage() {
+export default async function AnalysisPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ done?: string }>;
+}) {
+  const { done } = await searchParams;
   const hasSupabaseEnv = Boolean(
     (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL) &&
       (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY),
@@ -106,6 +111,15 @@ export default async function AnalysisPage() {
         title="평가관리"
         description="분석 준비가 끝난 자료를 선택해 AI 분석을 실행하고 검토해요."
       />
+
+      {done === "1" && (
+        <p
+          role="status"
+          className="flex items-center gap-2 rounded-2xl border border-success/20 bg-success-bg px-4 py-3 text-sm font-semibold text-success"
+        >
+          🎉 검토 대기를 모두 처리했어요! 승인된 분석은 아래 승인 완료에 확정 근거로 쌓였어요.
+        </p>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold text-foreground">

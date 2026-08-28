@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useActionState } from "react";
 import Image from "next/image";
 import { Pencil, ThumbsDown, ThumbsUp, FileText } from "lucide-react";
@@ -42,6 +42,38 @@ export function ReviewPanel({
   );
   const [feedback, setFeedback] = useState(initial.feedback_candidate);
   const [state, formAction, pending] = useActionState(submitReview, initialState);
+  const approveRef = useRef<HTMLButtonElement>(null);
+  const rejectRef = useRef<HTMLButtonElement>(null);
+
+  // 키보드 단축키 — A 승인 / R 반려 / E 수정 토글 (입력 필드 포커스 중엔 무시)
+  useEffect(() => {
+    if (readOnly) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key === "a") {
+        event.preventDefault();
+        approveRef.current?.click();
+      } else if (key === "r") {
+        event.preventDefault();
+        rejectRef.current?.click();
+      } else if (key === "e") {
+        event.preventDefault();
+        setEditing((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [readOnly]);
 
   const edited: AnalysisResult = useMemo(
     () => ({
@@ -233,9 +265,13 @@ export function ReviewPanel({
             >
               <Pencil className="h-4 w-4" />
               {editing ? "수정 완료" : "수정"}
+              <kbd className="rounded-md border border-line bg-neutral-bg px-1.5 font-sans text-[11px] font-semibold text-muted">
+                E
+              </kbd>
             </button>
 
             <button
+              ref={rejectRef}
               type="submit"
               formAction={(fd) => {
                 fd.set("decision", "REJECTED");
@@ -246,15 +282,22 @@ export function ReviewPanel({
             >
               <ThumbsDown className="h-4 w-4" />
               반려
+              <kbd className="rounded-md border border-danger/20 bg-danger-bg px-1.5 font-sans text-[11px] font-semibold text-danger/70">
+                R
+              </kbd>
             </button>
 
             <button
+              ref={approveRef}
               type="submit"
               disabled={pending}
               className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-brand-700 disabled:opacity-50"
             >
               <ThumbsUp className="h-4 w-4" />
               {pending ? "저장 중..." : isChanged ? "수정 후 승인" : "승인"}
+              <kbd className="rounded-md border border-white/30 bg-white/15 px-1.5 font-sans text-[11px] font-semibold text-white/90">
+                A
+              </kbd>
             </button>
           </form>
         )}

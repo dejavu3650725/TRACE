@@ -16,12 +16,22 @@ export const dynamic = "force-dynamic";
  * Actions 순서 고정: [수정] [반려] [승인]
  * Owner: PROCESS (feat/process)
  */
+const PREV_LABEL: Record<string, string> = {
+  APPROVED: "승인",
+  EDITED_APPROVED: "수정 후 승인",
+  REJECTED: "반려",
+};
+
 export default async function AnalysisReviewPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ analysisId: string }>;
+  searchParams: Promise<{ prev?: string }>;
 }) {
   const { analysisId } = await params;
+  const { prev } = await searchParams;
+  const prevLabel = prev ? PREV_LABEL[prev] : undefined;
   const supabase = await createClient();
 
   const { data: analysis } = await supabase
@@ -94,12 +104,28 @@ export default async function AnalysisReviewPage({
 
   const studentLabel = student ? `${student.student_number}번 ${student.name}` : "학생";
 
+  // 남은 검토 대기 수 (연속 검토 흐름 안내용)
+  const { count: remainingCount } = await supabase
+    .from("analyses")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["AI_DRAFT", "TEACHER_REVIEW"]);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="분석 검토"
-        description={`${studentLabel} · ${activity?.title ?? "활동"} · 분석 v${analysis.version_no}`}
+        description={`${studentLabel} · ${activity?.title ?? "활동"} · 분석 v${analysis.version_no}${
+          remainingCount ? ` · 검토 대기 ${remainingCount}건` : ""
+        }`}
       />
+      {prevLabel && (
+        <p
+          role="status"
+          className="flex items-center gap-2 rounded-2xl border border-success/20 bg-success-bg px-4 py-3 text-sm font-semibold text-success"
+        >
+          이전 학생 {prevLabel} 완료 — 다음 검토로 바로 이어드렸어요.
+        </p>
+      )}
       <ReviewPanel
         analysisId={analysis.id}
         readOnly={!["AI_DRAFT", "TEACHER_REVIEW"].includes(analysis.status)}
