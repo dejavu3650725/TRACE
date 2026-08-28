@@ -87,27 +87,38 @@ export async function POST(request: Request) {
     metadata_json: { submission_count: submissionIds.length },
   });
 
-  // 순차 분석 — 부분 실패 허용
+  // 병렬 분석 (동시 4건) — 부분 실패 허용, Gemini 무료 등급 분당 한도 고려
+  const CONCURRENCY = 4;
   let completed = 0;
   let failed = 0;
   let lastError: string | null = null;
-  for (const submissionId of submissionIds) {
-    try {
-      await analyzeOneSubmission(supabase, submissionId);
-      completed += 1;
-    } catch (e) {
-      failed += 1;
-      lastError = e instanceof Error ? e.message.slice(0, 500) : "알 수 없는 오류";
+  let cursor = 0;
+
+  const worker = async () => {
+    while (true) {
+      const i = cursor++;
+      if (i >= submissionIds.length) return;
+      try {
+        await analyzeOneSubmission(supabase, submissionIds[i]);
+        completed += 1;
+      } catch (e) {
+        failed += 1;
+        lastError = e instanceof Error ? e.message.slice(0, 500) : "알 수 없는 오류";
+      }
+      await supabase
+        .from("processing_jobs")
+        .update({
+          completed_count: completed,
+          failed_count: failed,
+          current_step: `${completed + failed}/${submissionIds.length} 처리`,
+        })
+        .eq("id", job.id);
     }
-    await supabase
-      .from("processing_jobs")
-      .update({
-        completed_count: completed,
-        failed_count: failed,
-        current_step: `${completed + failed}/${submissionIds.length} 처리`,
-      })
-      .eq("id", job.id);
-  }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, submissionIds.length) }, () => worker()),
+  );
 
   await supabase
     .from("processing_jobs")
