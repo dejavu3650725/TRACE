@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { reissueClassCode, updateClass } from "@/features/classes/actions";
+import { reissueClassCode } from "@/features/classes/actions";
+import { ClassInfoForm } from "@/features/classes/ClassInfoForm";
 import { isClassCodeActive } from "@/features/classes/class-code";
 import { requireTeacherOwnership } from "@/lib/auth/ownership";
 import { requireSessionTeacher } from "@/lib/auth/teacher";
@@ -46,7 +47,6 @@ export default async function ClassDetailPage({
     <div className="space-y-6">
       <PageHeader title={classItem.name} description="학급 정보와 학생 제출용 클래스 코드를 관리해요." />
       {query.code === "reissued" && <p className="rounded-lg bg-success-bg px-4 py-3 text-sm text-success">새 클래스 코드를 발급했어요. 이전 코드는 즉시 무효예요.</p>}
-      {query.updated === "1" && <p className="rounded-lg bg-success-bg px-4 py-3 text-sm text-success">학급 정보를 저장했어요.</p>}
       {query.error === "invalid-input" && <p className="rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger">입력 값을 확인해 주세요.</p>}
 
       <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
@@ -71,13 +71,12 @@ export default async function ClassDetailPage({
 
       <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
         <h2 className="font-bold text-foreground">학급 정보</h2>
-        <form action={updateClass} className="mt-4 grid gap-4 md:grid-cols-3">
-          <input type="hidden" name="classId" value={classItem.id} />
-          <label className="grid gap-1.5 text-sm font-medium text-foreground">학급명/반<input required name="name" maxLength={100} defaultValue={classItem.name} className="rounded-lg border border-border bg-background px-3 py-2" /></label>
-          <label className="grid gap-1.5 text-sm font-medium text-foreground">학년 <span className="font-normal text-muted">(선택)</span><input name="grade" type="number" min="1" max="12" defaultValue={classItem.grade ?? ""} className="rounded-lg border border-border bg-background px-3 py-2" /></label>
-          <label className="grid gap-1.5 text-sm font-medium text-foreground">교과 <span className="font-normal text-muted">(선택)</span><input name="subject" maxLength={100} defaultValue={classItem.subject ?? ""} className="rounded-lg border border-border bg-background px-3 py-2" /></label>
-          <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-700 md:col-start-3">저장</button>
-        </form>
+        <ClassInfoForm
+          classId={classItem.id}
+          name={classItem.name}
+          grade={classItem.grade}
+          subject={classItem.subject}
+        />
       </section>
     </div>
   );
