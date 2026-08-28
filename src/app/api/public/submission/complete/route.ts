@@ -22,7 +22,9 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: submission } = await supabase
     .from("submissions")
-    .select("id, submission_code, activity_assignments ( status, classes ( teacher_id ) )")
+    .select(
+      "id, submission_code, current_attempt_no, activity_assignments ( status, classes ( teacher_id ) )",
+    )
     .eq("id", submissionId)
     .maybeSingle();
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
@@ -37,7 +39,8 @@ export async function POST(req: NextRequest) {
     .from("artifacts")
     .select("id", { count: "exact", head: true })
     .eq("submission_id", submissionId)
-    .eq("artifact_role", "ORIGINAL");
+    .eq("artifact_role", "ORIGINAL")
+    .eq("attempt_no", submission.current_attempt_no ?? 1);
   if (!count) {
     return NextResponse.json({ ok: false, message: "업로드된 사진이 없어요." }, { status: 400 });
   }
@@ -47,6 +50,8 @@ export async function POST(req: NextRequest) {
     .update({
       input_status: "READY_FOR_PROCESS",
       submitted_at: new Date().toISOString(),
+      // 사진 제출이 최신 근거가 되므로 예전 구조화 응답(시드/스프레드시트)은 비운다
+      structured_input: null,
     })
     .eq("id", submissionId);
   if (error) {

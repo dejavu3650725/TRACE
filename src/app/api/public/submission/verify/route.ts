@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
   const sessionCode = randomBytes(16).toString("base64url");
   const { data: existing } = await supabase
     .from("submissions")
-    .select("id")
+    .select("id, input_status, current_attempt_no")
     .eq("student_id", student.id)
     .eq("activity_assignment_id", assignment.id)
     .maybeSingle();
@@ -115,9 +115,18 @@ export async function POST(req: NextRequest) {
   let submissionId: string;
   if (existing) {
     submissionId = existing.id;
+    // 이미 제출 완료된 건을 다시 여는 경우 = 새 시도(attempt).
+    // 이전 사진/응답이 새 분석에 섞이지 않도록 attempt 번호를 올린다.
+    const isResubmission = existing.input_status === "READY_FOR_PROCESS";
     const { error } = await supabase
       .from("submissions")
-      .update({ submission_code: sessionCode, input_status: "UPLOADING" })
+      .update({
+        submission_code: sessionCode,
+        input_status: "UPLOADING",
+        current_attempt_no: isResubmission
+          ? (existing.current_attempt_no ?? 1) + 1
+          : (existing.current_attempt_no ?? 1),
+      })
       .eq("id", existing.id);
     if (error) return fail(500);
   } else {

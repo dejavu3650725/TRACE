@@ -21,7 +21,7 @@ export async function analyzeOneSubmission(
   const { data: submission, error: subError } = await supabase
     .from("submissions")
     .select(
-      `id, structured_input, input_status, process_status,
+      `id, structured_input, input_status, process_status, current_attempt_no, submitted_at,
        activity_assignments (
          activities ( id, title, description,
            activity_standards ( standard_id )
@@ -36,16 +36,23 @@ export async function analyzeOneSubmission(
     throw new Error("분석 준비(READY_FOR_PROCESS) 상태가 아닙니다.");
   }
 
-  // 이미 검토 대기 중인 분석이 있으면 재실행하지 않는다
+  // 이미 검토 대기 중인 "최신 제출 기준" 분석이 있으면 재실행하지 않는다.
+  // 단, 분석 이후에 학생이 다시 제출했다면(재제출) 새 버전으로 다시 분석한다.
   const { data: latest } = await supabase
     .from("analyses")
-    .select("id, version_no, status")
+    .select("id, version_no, status, created_at")
     .eq("submission_id", submissionId)
     .order("version_no", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (latest && (latest.status === "AI_DRAFT" || latest.status === "TEACHER_REVIEW")) {
+  const latestIsPending =
+    latest && (latest.status === "AI_DRAFT" || latest.status === "TEACHER_REVIEW");
+  const analysisIsFresh =
+    latest &&
+    (!submission.submitted_at ||
+      new Date(latest.created_at).getTime() >= new Date(submission.submitted_at).getTime());
+  if (latestIsPending && analysisIsFresh) {
     await supabase
       .from("submissions")
       .update({ process_status: "REVIEW_REQUIRED" })
@@ -74,11 +81,13 @@ export async function analyzeOneSubmission(
     const standards = getStandards(standardIds);
 
     // 3. 원본 Artifact → 짧은 만료 Signed URL → base64 (TRD §23, §30.8)
+    // 최신 시도(attempt)의 사진만 사용 — 재제출 시 예전 사진이 섞이지 않게 (TRD §24)
     const { data: artifacts } = await supabase
       .from("artifacts")
-      .select("id, storage_path, mime_type, artifact_role, page_start")
+      .select("id, storage_path, mime_type, artifact_role, page_start, attempt_no")
       .eq("submission_id", submissionId)
       .eq("artifact_role", "ORIGINAL")
+      .eq("attempt_no", submission.current_attempt_no ?? 1)
       .order("created_at", { ascending: true })
       .limit(4);
 
@@ -119,6 +128,15 @@ export async function analyzeOneSubmission(
       .select("id")
       .single();
     if (insertError || !analysis) throw new Error("분석 결과 저장에 실패했습니다.");
+
+    // 재제출로 만들어진 새 버전이 확정판이므로, 이전의 미검토 초안은 자동 대체(REJECTED) 처리
+    // → 검토 대기 목록에 같은 학생이 중복으로 쌓이지 않는다
+    await supabase
+      .from("analyses")
+      .update({ status: "REJECTED" })
+      .eq("submission_id", submissionId)
+      .in("status", ["AI_DRAFT", "TEACHER_REVIEW"])
+      .neq("id", analysis.id);
 
     const firstArtifactId = artifacts?.[0]?.id ?? null;
     const evidenceRows = result.evidence.map((e) => ({
