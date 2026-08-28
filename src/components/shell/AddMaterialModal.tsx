@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { X, Upload, Camera, QrCode, Users, UserRound } from "lucide-react";
 
@@ -18,14 +20,20 @@ export function AddMaterialModal({
   onClose: () => void;
 }) {
   const router = useRouter();
-  if (!open) return null;
+
+  // TopBar의 backdrop-blur가 fixed 기준을 바꿔 모달이 잘리는 문제를 피하기 위해
+  // Portal로 document.body에 직접 렌더링한다.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!open || !mounted) return null;
 
   const go = (path: string) => {
     onClose();
     router.push(path);
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
       onClick={onClose}
@@ -102,6 +110,7 @@ export function AddMaterialModal({
           </section>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
