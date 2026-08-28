@@ -36,9 +36,9 @@ export function GoogleLoginButton() {
         type="button"
         onClick={signIn}
         disabled={loading}
-        className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors duration-200 hover:bg-neutral-bg disabled:opacity-60"
+        className="flex h-13 w-full items-center justify-center gap-3 rounded-full border border-line bg-white px-5 text-[15px] font-semibold text-foreground shadow-sm transition-all duration-200 hover:border-brand-300 hover:shadow-md active:scale-[0.99] disabled:opacity-60"
       >
-        <svg className="h-4.5 w-4.5" viewBox="0 0 24 24" aria-hidden>
+        <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
           <path
             fill="#4285F4"
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z"
