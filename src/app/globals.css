@@ -1,4 +1,5 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&display=swap");
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────
@@ -73,6 +74,8 @@
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo",
     "Noto Sans KR", "Malgun Gothic", sans-serif;
+  /* 디스플레이(로고·숫자·라틴 헤드라인)용 기하학적 서체 — 한글은 Pretendard로 폴백 */
+  --font-display: "Outfit", "Pretendard Variable", Pretendard, system-ui, sans-serif;
 
   --radius-card: 1rem;
   --shadow-card: var(--shadow-card);
@@ -88,6 +91,18 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 제목 계층 — 살짝 조여진 자간으로 더 단단한 인상 */
+h1, h2, h3 {
+  letter-spacing: -0.015em;
+  word-break: keep-all;
+}
+
+/* 숫자는 고정폭 숫자로 — 대시보드 통계가 흔들리지 않게 */
+.tabular-nums, [data-stat] {
+  font-variant-numeric: tabular-nums;
 }
 
 /* 얇은 스크롤바 (데스크톱 교사 화면) */

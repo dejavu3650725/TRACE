@@ -37,7 +37,7 @@ export function StatCard({
         )}
       </div>
       <div className="mt-3">
-        <p className={`text-3xl font-bold tracking-tight ${valueClass}`}>{value}</p>
+        <p className={`font-display text-3xl font-bold tracking-tight tabular-nums ${valueClass}`}>{value}</p>
         {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
       </div>
     </div>
