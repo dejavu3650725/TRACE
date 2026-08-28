@@ -68,7 +68,7 @@ export default async function AnalysisPage({
     .from("analyses")
     .select(
       `id, status, updated_at, version_no,
-       submissions ( id, students ( name, student_number ),
+       submissions ( id, students ( id, name, student_number ),
          activity_assignments ( activities ( title ) ) )`,
     )
     .in("status", ["APPROVED", "EDITED_APPROVED"])
@@ -97,6 +97,7 @@ export default async function AnalysisPage({
       id: d.id as string,
       status: d.status as keyof typeof ANALYSIS_STATUS_LABEL,
       versionNo: d.version_no as number,
+      studentId: (student?.id as string) ?? null,
       studentLabel: student ? `${student.student_number}번 ${student.name}` : "학생 미상",
       activityTitle: activity?.title ?? "활동 미상",
     };
@@ -177,22 +178,30 @@ export default async function AnalysisPage({
         ) : (
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)]">
             {approvedRows.map((d) => (
-              <li key={d.id}>
+              <li key={d.id} className="flex items-center justify-between gap-3 px-5 py-4">
                 <Link
                   href={`/analysis/${d.id}/review`}
-                  className="flex items-center justify-between gap-3 px-5 py-4 transition-colors duration-150 hover:bg-brand-50/40"
+                  className="min-w-0 flex-1 transition-colors duration-150 hover:text-brand-700"
                 >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-foreground">
-                      {d.studentLabel} · {d.activityTitle}
-                    </span>
-                    <span className="text-xs text-muted">분석 v{d.versionNo}</span>
+                  <span className="block truncate text-sm font-semibold text-foreground">
+                    {d.studentLabel} · {d.activityTitle}
                   </span>
+                  <span className="text-xs text-muted">분석 v{d.versionNo}</span>
+                </Link>
+                <span className="flex shrink-0 items-center gap-2">
                   <StatusBadge
                     label={ANALYSIS_STATUS_LABEL[d.status].label}
                     tone={ANALYSIS_STATUS_LABEL[d.status].tone}
                   />
-                </Link>
+                  {d.studentId && (
+                    <Link
+                      href={`/reports/students/${d.studentId}`}
+                      className="rounded-xl border border-brand-200 px-3 py-1.5 text-xs font-bold text-brand-700 transition-colors duration-150 hover:bg-brand-50"
+                    >
+                      학생 리포트
+                    </Link>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
