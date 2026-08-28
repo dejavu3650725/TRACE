@@ -88,8 +88,19 @@ interface GeminiPart {
   inline_data?: { mime_type: string; data: string };
 }
 
-async function callGemini(parts: GeminiPart[]): Promise<string> {
+async function callGemini(parts: GeminiPart[], withThinkingOff = true): Promise<string> {
   const model = getGeminiModel();
+
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0.2,
+    responseMimeType: "application/json",
+  };
+  // 모델의 내부 '생각' 시간을 꺼서 응답 속도를 크게 줄인다.
+  // (구조화 분석 작업이라 품질 영향 적음. 미지원 모델이면 아래에서 자동 폴백)
+  if (withThinkingOff) {
+    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  }
+
   // API Key는 URL이 아니라 헤더로 전달한다 (신형 키 형식 호환 + URL 로그 노출 방지)
   const res = await fetch(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
     method: "POST",
@@ -99,15 +110,16 @@ async function callGemini(parts: GeminiPart[]): Promise<string> {
     },
     body: JSON.stringify({
       contents: [{ role: "user", parts }],
-      generationConfig: {
-        temperature: 0.2,
-        responseMimeType: "application/json",
-      },
+      generationConfig,
     }),
   });
 
   if (!res.ok) {
     const body = await res.text();
+    // thinkingConfig 미지원 모델이면 해당 옵션 없이 1회 폴백
+    if (res.status === 400 && withThinkingOff && /thinking/i.test(body)) {
+      return callGemini(parts, false);
+    }
     // API Key 등 민감정보가 로그에 남지 않도록 상태코드 중심으로 기록
     throw new Error(`Gemini API 오류 (HTTP ${res.status}): ${body.slice(0, 300)}`);
   }
