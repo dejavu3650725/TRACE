@@ -86,16 +86,7 @@ export default function ReportsPage() {
   }));
 
   return (
-    <div
-      data-report-surface
-      className="fixed inset-y-0 left-0 z-[60] min-h-dvh w-screen overflow-x-hidden overflow-y-auto bg-background px-4 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:static md:z-auto md:min-h-0 md:w-auto md:overflow-visible md:bg-transparent md:p-0"
-    >
-      <div className="mx-auto w-full min-w-0 max-w-6xl space-y-8">
-        <div className="flex items-center gap-2 md:hidden" aria-label="TRACE 리포트">
-          <span className="text-sm font-black tracking-[0.16em] text-brand-600">TRACE</span>
-          <span className="text-muted">/</span>
-          <span className="text-sm font-semibold text-foreground">리포트</span>
-        </div>
+    <div className="space-y-8">
       <PageHeader
         title="학습 성장 리포트"
         description="관찰된 입력과 교사 승인 근거가 성장 기록으로 이어지는 과정을 확인해요."
@@ -342,7 +333,6 @@ export default function ReportsPage() {
           </section>
         </li>
       </ol>
-      </div>
     </div>
   );
 }
