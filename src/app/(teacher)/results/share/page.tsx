@@ -12,6 +12,8 @@ import { QuickQrPanel } from "@/features/activities/QuickQrPanel";
 
 export const metadata: Metadata = { title: "학생 직접 제출" };
 export const dynamic = "force-dynamic";
+// 이 페이지의 서버 액션(활동지 AI 분석 → 활동 생성 → QR)은 수십 초 걸릴 수 있다
+export const maxDuration = 300;
 
 /**
  * 학생 직접 제출 QR 공유 /results/share (ISSUE-17 QRSharePanel)
