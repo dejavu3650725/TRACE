@@ -5,7 +5,7 @@ export default function StudentSubmitLayout({ children }: { children: React.Reac
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-background px-5 py-8">
       <div className="flex justify-center">
-        <TraceWordmark href="/" className="w-36" />
+        <TraceWordmark href="/" />
       </div>
       <div className="mt-8 flex-1 rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-card)]">
         {children}

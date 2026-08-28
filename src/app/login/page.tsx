@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, ScanLine, ShieldCheck, Sparkles } from "lucide-react";
 import { Footer } from "@/components/shell/Footer";
+import { TraceWordmark } from "@/components/shell/TraceWordmark";
 import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 
 export const metadata: Metadata = { title: "로그인" };
@@ -61,14 +61,7 @@ export default async function LoginPage({
 
       <main className="relative flex flex-1 flex-col items-center justify-center px-6 py-16">
         {/* 로고 */}
-        <Image
-          src="/trace-logo-horizontal-v1.png"
-          alt="TRACE"
-          width={2073}
-          height={758}
-          priority
-          className="h-auto w-44"
-        />
+        <TraceWordmark href="/" size="lg" />
 
         {/* 히어로 펀치라인 */}
         <h1 className="mt-10 text-center text-[2.1rem] font-bold leading-snug tracking-tight text-foreground sm:text-[2.6rem]">
