@@ -31,23 +31,32 @@ export async function createTeacherProfile(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // 이미 있으면 새로 만들지 않는다 (중복 클릭 / callback 재호출 대비)
-  const { data: existing } = await supabase
-    .from("teachers")
-    .select("id")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
+  // 0004 계약: Profile 생성 + 최초 LOGIN Audit을 원자적으로 처리하는 RPC 우선 사용.
+  // (RPC 미적용 환경에서는 기존 직접 INSERT 방식으로 폴백)
+  const { error: rpcError } = await supabase.rpc("complete_teacher_profile_and_login", {
+    p_name: name,
+    p_nickname: nickname || null,
+  });
 
-  if (!existing) {
-    const { error } = await supabase.from("teachers").insert({
-      auth_user_id: user.id,
-      name,
-      nickname: nickname || null,
-      email: user.email ?? null,
-    });
-    // unique(auth_user_id) 충돌은 동시 요청으로 이미 생성된 경우 → 통과
-    if (error && error.code !== "23505") {
-      return { error: "저장에 실패했어요. 잠시 후 다시 시도해 주세요." };
+  if (rpcError) {
+    // 이미 있으면 새로 만들지 않는다 (중복 클릭 / callback 재호출 대비)
+    const { data: existing } = await supabase
+      .from("teachers")
+      .select("id")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+
+    if (!existing) {
+      const { error } = await supabase.from("teachers").insert({
+        auth_user_id: user.id,
+        name,
+        nickname: nickname || null,
+        email: user.email ?? null,
+      });
+      // unique(auth_user_id) 충돌은 동시 요청으로 이미 생성된 경우 → 통과
+      if (error && error.code !== "23505") {
+        return { error: "저장에 실패했어요. 잠시 후 다시 시도해 주세요." };
+      }
     }
   }
 
