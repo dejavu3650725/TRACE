@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionTeacher } from "@/lib/auth/teacher";
 import { analyzeOneSubmission } from "@/features/process/run";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * POST /api/process/analysis-jobs (TRD §28)
@@ -87,47 +88,50 @@ export async function POST(request: Request) {
     metadata_json: { submission_count: submissionIds.length },
   });
 
-  // 병렬 분석 (동시 4건) — 부분 실패 허용, Gemini 무료 등급 분당 한도 고려
-  const CONCURRENCY = 4;
-  let completed = 0;
-  let failed = 0;
-  let lastError: string | null = null;
-  let cursor = 0;
+  // 백그라운드 병렬 분석 (TRD §28) — 응답은 즉시 반환하고, 분석은 응답 후 서버에서 계속된다.
+  // 교사는 다른 화면으로 이동해도 되고, 진행상태는 job_id 폴링으로 확인한다.
+  after(async () => {
+    const CONCURRENCY = 5; // Gemini 무료 등급 분당 한도 고려
+    let completed = 0;
+    let failed = 0;
+    let lastError: string | null = null;
+    let cursor = 0;
 
-  const worker = async () => {
-    while (true) {
-      const i = cursor++;
-      if (i >= submissionIds.length) return;
-      try {
-        await analyzeOneSubmission(supabase, submissionIds[i]);
-        completed += 1;
-      } catch (e) {
-        failed += 1;
-        lastError = e instanceof Error ? e.message.slice(0, 500) : "알 수 없는 오류";
+    const worker = async () => {
+      while (true) {
+        const i = cursor++;
+        if (i >= submissionIds.length) return;
+        try {
+          await analyzeOneSubmission(supabase, submissionIds[i]);
+          completed += 1;
+        } catch (e) {
+          failed += 1;
+          lastError = e instanceof Error ? e.message.slice(0, 500) : "알 수 없는 오류";
+        }
+        await supabase
+          .from("processing_jobs")
+          .update({
+            completed_count: completed,
+            failed_count: failed,
+            current_step: `${completed + failed}/${submissionIds.length} 처리`,
+          })
+          .eq("id", job.id);
       }
-      await supabase
-        .from("processing_jobs")
-        .update({
-          completed_count: completed,
-          failed_count: failed,
-          current_step: `${completed + failed}/${submissionIds.length} 처리`,
-        })
-        .eq("id", job.id);
-    }
-  };
+    };
 
-  await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, submissionIds.length) }, () => worker()),
-  );
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, submissionIds.length) }, () => worker()),
+    );
 
-  await supabase
-    .from("processing_jobs")
-    .update({
-      status: failed === submissionIds.length ? "FAILED" : "COMPLETED",
-      current_step: null,
-      error_message: lastError,
-    })
-    .eq("id", job.id);
+    await supabase
+      .from("processing_jobs")
+      .update({
+        status: failed === submissionIds.length ? "FAILED" : "COMPLETED",
+        current_step: null,
+        error_message: lastError,
+      })
+      .eq("id", job.id);
+  });
 
-  return envelope(200, { job_id: job.id, completed, failed, total: submissionIds.length });
+  return envelope(200, { job_id: job.id, total: submissionIds.length });
 }

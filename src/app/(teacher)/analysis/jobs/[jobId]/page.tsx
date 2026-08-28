@@ -20,7 +20,7 @@ export default async function AnalysisJobPage({
     <div className="space-y-6">
       <PageHeader
         title="분석 진행"
-        description="분석이 진행되는 동안 다른 화면으로 이동해도 괜찮아요."
+        description="분석은 서버에서 진행돼요. 다른 화면으로 이동하거나 창을 닫아도 계속됩니다."
       />
       <JobProgress jobId={jobId} />
     </div>

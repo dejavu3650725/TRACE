@@ -138,7 +138,7 @@ export function AnalysisRunPanel({ rows }: { rows: AnalysisTargetRow[] }) {
           className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-brand-700 disabled:opacity-50"
         >
           <Sparkles className="h-4 w-4" />
-          {running ? "AI 분석 중... (창을 닫지 마세요)" : "선택한 자료 분석 실행"}
+          {running ? "분석 시작 중..." : "선택한 자료 분석 실행"}
         </button>
       </div>
     </div>
