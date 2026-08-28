@@ -6,6 +6,8 @@ import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { createClient } from "@/lib/supabase/server";
+import { SUBJECT_DOMAINS, parseStandardDomain } from "@/lib/curriculum/domains";
+import { DomainRadar, type DomainAxis } from "@/components/charts/DomainRadar";
 
 export const metadata: Metadata = { title: "대시보드" };
 export const dynamic = "force-dynamic";
@@ -30,6 +32,7 @@ export default async function DashboardPage() {
   let dailyTrend: Array<{ label: string; count: number }> = [];
   let approvedAnalysesTotal = 0;
   let radar: Array<{ label: string; value: number }> = [];
+  let subjectProfiles: Array<{ subject: string; total: number; axes: DomainAxis[] }> = [];
 
   if (hasSupabaseEnv) {
     const supabase = await createClient();
@@ -62,7 +65,10 @@ export default async function DashboardPage() {
         .limit(5),
       supabase
         .from("analyses")
-        .select("analysis_json, updated_at")
+        .select(
+          `analysis_json, updated_at,
+           submissions ( activity_assignments ( activities ( activity_standards ( standard_id ) ) ) )`,
+        )
         .in("status", ["APPROVED", "EDITED_APPROVED"])
         .limit(500),
     ]);
@@ -162,6 +168,40 @@ export default async function DashboardPage() {
         { label: "검토 완성", value: reviewDone },
         { label: "분석 참여", value: coverage },
       ];
+
+      // 4) 교과 영역 프로필 — 성취기준 코드(예: 4수01-11)의 영역을 2022 교육과정 기준으로 집계
+      const domainAgg = new Map<string, Map<number, { sum: number; n: number }>>();
+      for (const row of approvedRows) {
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const j = row.analysis_json as any;
+        const score = levelScore[j?.achievement_level] ?? 0.5;
+        const submission = one((row as any).submissions);
+        const activity = one(one(submission?.activity_assignments)?.activities);
+        const standardIds: string[] = (activity?.activity_standards ?? []).map(
+          (s: any) => s.standard_id as string,
+        );
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+        for (const sid of standardIds) {
+          const parsed = parseStandardDomain(sid);
+          if (!parsed) continue;
+          if (!domainAgg.has(parsed.subject)) domainAgg.set(parsed.subject, new Map());
+          const bySubject = domainAgg.get(parsed.subject)!;
+          const cur = bySubject.get(parsed.domainIndex) ?? { sum: 0, n: 0 };
+          bySubject.set(parsed.domainIndex, { sum: cur.sum + score, n: cur.n + 1 });
+        }
+      }
+      subjectProfiles = Array.from(domainAgg.entries()).map(([subject, bySubject]) => {
+        const domains = SUBJECT_DOMAINS[subject] ?? [];
+        const axes: DomainAxis[] = domains.map((label, idx) => {
+          const agg = bySubject.get(idx);
+          return agg
+            ? { label, value: agg.sum / agg.n, count: agg.n }
+            : { label, value: null, count: 0 };
+        });
+        const total = axes.reduce((acc, a) => acc + a.count, 0);
+        return { subject, total, axes };
+      });
+      subjectProfiles.sort((a, b) => b.total - a.total);
     }
   }
 
@@ -195,14 +235,20 @@ export default async function DashboardPage() {
     })
     .join(" ");
 
-  return (
-    <div className="space-y-8">
-      <PageHeader
-        title="오늘의 TRACE"
-        description="학급의 제출·검토·분석 현황을 한눈에 확인하세요."
-      />
+  const hasRadar = approvedAnalysesTotal > 0 && (radar.length > 0 || subjectProfiles.length > 0);
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+  return (
+    <div className="space-y-6">
+      <div className="animate-rise">
+        <PageHeader
+          title="오늘의 TRACE"
+          description="학급의 제출·검토·분석 현황을 한눈에 확인하세요."
+        />
+      </div>
+
+      <div className={`grid grid-cols-1 gap-6 ${hasRadar ? "xl:grid-cols-3" : ""}`}>
+        <div className={`space-y-6 ${hasRadar ? "xl:col-span-2" : ""}`}>
+      <div className="animate-rise grid grid-cols-2 gap-4 lg:grid-cols-4" style={{ animationDelay: "0.08s" }}>
         <StatCard
           label="진행 중 활동"
           value={openAssignments}
@@ -235,7 +281,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <section className="space-y-3">
+      <section className="animate-rise space-y-3" style={{ animationDelay: "0.16s" }}>
         <h2 className="text-lg font-bold text-foreground">지금 할 일</h2>
         {todos.length === 0 ? (
           <EmptyState
@@ -269,7 +315,7 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      <section className="space-y-3">
+      <section className="animate-rise space-y-3" style={{ animationDelay: "0.24s" }}>
         <h2 className="text-lg font-bold text-foreground">성장 흐름</h2>
         {/* 차트는 외부 라이브러리 없이 div+flex+% 로 구현 (UIUX Master Prompt) */}
         {approvedAnalysesTotal === 0 ? (
@@ -302,7 +348,7 @@ export default async function DashboardPage() {
                       </span>
                       <span className="relative h-4 flex-1 overflow-hidden rounded-r-[4px] bg-neutral-bg">
                         <span
-                          className="absolute inset-y-0 left-0 rounded-r-[4px] bg-gradient-to-r from-brand-500 to-brand-600 transition-[width] duration-500"
+                          className="animate-grow-x absolute inset-y-0 left-0 rounded-r-[4px] bg-gradient-to-r from-brand-500 to-brand-600"
                           style={{ width: count === 0 ? "0%" : `${Math.max(pct, 4)}%` }}
                         />
                       </span>
@@ -332,17 +378,19 @@ export default async function DashboardPage() {
                 <line x1="40" x2="520" y1="50" y2="50" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 5" />
                 <line x1="40" x2="520" y1="114" y2="114" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 5" />
                 <line x1="40" x2="520" y1="178" y2="178" stroke="var(--border)" strokeWidth="1.5" />
-                <polygon points={trendArea} fill="url(#trendFill)" />
+                <polygon points={trendArea} fill="url(#trendFill)" className="animate-fade-late" />
                 <polyline
                   points={trendLine}
+                  pathLength={1}
                   fill="none"
                   stroke="#1d6bf3"
                   strokeWidth="2.5"
                   strokeLinejoin="round"
                   strokeLinecap="round"
+                  className="animate-draw"
                 />
                 {trendPts.map((p, i) => (
-                  <g key={i}>
+                  <g key={i} className="animate-fade-late">
                     <circle
                       cx={p.x}
                       cy={p.y}
@@ -381,19 +429,70 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* 학급 역량 프로필 — 육각 레이더 + 지수 카드 (승인 분석 자동 집계) */}
-        {approvedAnalysesTotal > 0 && radar.length > 0 && (
-          <div className="rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-card)]">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="text-sm font-bold text-foreground">학급 역량 프로필</h3>
-              <span className="text-xs text-muted">
-                교사·학부모·학생이 함께 보는 객관 지표 · 100점 만점 지수
-              </span>
-            </div>
-            <div className="mt-4 flex flex-col items-center gap-8 lg:flex-row">
+      </section>
+        </div>
+
+        {/* 우측 프로필 — ① 교과 영역 프로필(2022 교육과정 준거) ② 학습 과정 지표 */}
+        {hasRadar && (
+          <aside className="animate-rise space-y-6" style={{ animationDelay: "0.32s" }}>
+            {subjectProfiles.map(({ subject, total, axes }) => (
+              <div
+                key={subject}
+                className="rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-card)]"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="text-sm font-bold text-foreground">
+                    교과 영역 프로필 · <span className="text-brand-700">{subject}</span>
+                  </h3>
+                  <span className="text-xs text-muted">2022 개정 교육과정</span>
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  {subject} {axes.length}개 영역 기준 · 승인 근거 {total}건
+                </p>
+                <div className="mt-2">
+                  <DomainRadar axes={axes} />
+                </div>
+                <ul className="mt-2 space-y-1.5">
+                  {axes.map((a) => (
+                    <li key={a.label} className="flex items-center justify-between gap-2 text-[13px]">
+                      <span
+                        className={
+                          a.value === null ? "text-muted/60" : "font-semibold text-foreground"
+                        }
+                      >
+                        {a.label}
+                      </span>
+                      {a.value === null ? (
+                        <span className="text-xs text-muted/60">아직 근거 없음</span>
+                      ) : (
+                        <span className="flex items-baseline gap-2">
+                          <span className="text-xs text-muted">{a.count}건</span>
+                          <span className="font-display text-sm font-bold tabular-nums text-brand-700">
+                            {Math.round(a.value * 100)}
+                          </span>
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-center text-xs text-muted">
+                  승인이 쌓이면 비어 있는 영역이 채워져요.
+                </p>
+              </div>
+            ))}
+
+            <div className="rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-card)]">
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="text-sm font-bold text-foreground">학습 과정 지표</h3>
+                <span className="text-xs text-muted">100점 만점 지수</span>
+              </div>
+              <p className="mt-1 text-xs text-muted">
+                배움의 과정이 얼마나 건강한지 보는 보조 지표
+              </p>
+
               <svg
                 viewBox="0 0 280 250"
-                className="w-full max-w-[300px] shrink-0"
+                className="mx-auto mt-3 w-full max-w-[280px]"
                 role="img"
                 aria-label="학급 역량 육각형 레이더 차트"
               >
@@ -414,20 +513,22 @@ export default async function DashboardPage() {
                     />
                   );
                 })}
-                <polygon
-                  points={radarShape}
-                  fill="#1d6bf3"
-                  fillOpacity="0.16"
-                  stroke="#1d6bf3"
-                  strokeWidth="2"
-                  strokeLinejoin="round"
-                />
-                {radar.map((m, i) => {
-                  const p = radarPoint(i, RADAR_R * Math.max(0.06, m.value));
-                  return (
-                    <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="#1d6bf3" stroke="#ffffff" strokeWidth="1.5" />
-                  );
-                })}
+                <g className="animate-radar">
+                  <polygon
+                    points={radarShape}
+                    fill="#1d6bf3"
+                    fillOpacity="0.16"
+                    stroke="#1d6bf3"
+                    strokeWidth="2"
+                    strokeLinejoin="round"
+                  />
+                  {radar.map((m, i) => {
+                    const p = radarPoint(i, RADAR_R * Math.max(0.06, m.value));
+                    return (
+                      <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="#1d6bf3" stroke="#ffffff" strokeWidth="1.5" />
+                    );
+                  })}
+                </g>
                 {radar.map((m, i) => {
                   const p = radarPoint(i, RADAR_R + 24);
                   return (
@@ -446,20 +547,20 @@ export default async function DashboardPage() {
                 })}
               </svg>
 
-              <ul className="grid w-full flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+              <ul className="mt-3 grid grid-cols-2 gap-2.5">
                 {radar.map((m) => {
                   const pct = Math.round(m.value * 100);
                   return (
-                    <li key={m.label} className="rounded-xl bg-neutral-bg/50 px-4 py-3">
+                    <li key={m.label} className="rounded-xl bg-neutral-bg/50 px-3.5 py-2.5">
                       <div className="flex items-baseline justify-between">
-                        <span className="text-sm font-semibold text-foreground">{m.label}</span>
+                        <span className="text-[13px] font-semibold text-foreground">{m.label}</span>
                         <span className="font-display text-sm font-bold tabular-nums text-brand-700">
                           {pct}
                         </span>
                       </div>
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-600"
+                          className="animate-grow-x h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-600"
                           style={{ width: `${Math.max(pct, 3)}%` }}
                         />
                       </div>
@@ -467,13 +568,13 @@ export default async function DashboardPage() {
                   );
                 })}
               </ul>
+              <p className="mt-3 text-center text-xs text-muted">
+                승인된 분석 {approvedAnalysesTotal}건에서 자동 집계 — 승인이 쌓일수록 정교해져요.
+              </p>
             </div>
-            <p className="mt-4 text-center text-xs text-muted">
-              승인된 분석 {approvedAnalysesTotal}건에서 자동 집계 — 승인이 쌓일수록 프로필이 정교해져요.
-            </p>
-          </div>
+          </aside>
         )}
-      </section>
+      </div>
     </div>
   );
 }

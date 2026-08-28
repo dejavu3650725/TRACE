@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AnimatedNumber } from "./AnimatedNumber";
 
 /**
  * 대시보드용 통계 카드.
@@ -27,7 +28,7 @@ export function StatCard({
         : "text-foreground";
 
   const body = (
-    <div className="group flex h-full flex-col justify-between rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-card)] transition-shadow duration-200 hover:shadow-[var(--shadow-card-hover)]">
+    <div className="group flex h-full flex-col justify-between rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted">{label}</p>
         {icon && (
@@ -37,7 +38,9 @@ export function StatCard({
         )}
       </div>
       <div className="mt-3">
-        <p className={`font-display text-3xl font-bold tracking-tight tabular-nums ${valueClass}`}>{value}</p>
+        <p className={`font-display text-3xl font-bold tracking-tight tabular-nums ${valueClass}`}>
+          {typeof value === "number" ? <AnimatedNumber value={value} /> : value}
+        </p>
         {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
       </div>
     </div>
