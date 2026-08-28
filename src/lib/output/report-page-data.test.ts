@@ -4,7 +4,10 @@ import type { AnalysisStatus, ReviewDecision } from "@/shared/types/status";
 
 const {
   mapLiveReportRows,
+  mapLatestLiveReportRows,
 }: typeof import("./report-page-data") = await import("./report-page-data" + ".ts");
+
+const teacherId = "teacher-1";
 
 const growthEvent = {
   id: "growth-1",
@@ -103,6 +106,7 @@ test("approved teacher-owned rows map to the exact live report values", () => {
   const report = mapLiveReportRows(
     growthEvent,
     [link],
+    teacherId,
     new Map([[link.evidence.artifacts.storage_path, signedUrl]]),
   );
 
@@ -122,12 +126,44 @@ test("unapproved analysis and judgment-shaped input cannot become a live report"
   const rejected = approvedLink();
   rejected.evidence.analyses.status = "REJECTED";
   rejected.evidence.analyses.reviews.decision = "REJECTED";
-  assert.equal(mapLiveReportRows(growthEvent, [rejected]), null);
+  assert.equal(mapLiveReportRows(growthEvent, [rejected], teacherId), null);
 
   const invalidInput = approvedLink();
   invalidInput.evidence.analyses.submissions.structured_input = {
     ...invalidInput.evidence.analyses.submissions.structured_input,
     judgment: "성취 수준이 높음",
   } as typeof invalidInput.evidence.analyses.submissions.structured_input;
-  assert.equal(mapLiveReportRows(growthEvent, [invalidInput]), null);
+  assert.equal(mapLiveReportRows(growthEvent, [invalidInput], teacherId), null);
+});
+
+test("cross-submission artifacts and cross-teacher reviews cannot become a live report", () => {
+  const crossSubmission = approvedLink();
+  crossSubmission.evidence.artifacts.submission_id = "submission-2";
+  assert.equal(mapLiveReportRows(growthEvent, [crossSubmission], teacherId), null);
+
+  const crossTeacherReview = approvedLink();
+  crossTeacherReview.evidence.analyses.reviews.reviewer_id = "teacher-2";
+  assert.equal(mapLiveReportRows(growthEvent, [crossTeacherReview], teacherId), null);
+});
+
+test("newest complete approved growth chain wins even when a newer event is incomplete", () => {
+  const newerGrowthEvent = {
+    ...growthEvent,
+    id: "growth-2",
+    created_at: "2026-08-29T04:00:00.000Z",
+  };
+  const newerRejected = approvedLink();
+  newerRejected.id = "growth-evidence-2";
+  newerRejected.growth_event_id = newerGrowthEvent.id;
+  newerRejected.evidence.analyses.status = "REJECTED";
+  newerRejected.evidence.analyses.reviews.decision = "REJECTED";
+
+  const report = mapLatestLiveReportRows(
+    [newerGrowthEvent, growthEvent],
+    [newerRejected, approvedLink()],
+    teacherId,
+  );
+
+  assert.ok(report);
+  assert.equal(report.growthEvent.id, growthEvent.id);
 });

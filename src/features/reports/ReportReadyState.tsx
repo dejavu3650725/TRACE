@@ -176,9 +176,7 @@ export function ReportReadyState({ stats }: ReportReadyStateProps) {
             <CircleDot className="h-4 w-4" aria-hidden="true" />
           </span>
           <div>
-            <p className="text-sm font-bold text-foreground">
-              {stats.latestStudentLabel ? `${stats.latestStudentLabel} 입력을 확인하고 있습니다.` : "표시할 실제 학생 정보가 아직 없습니다."}
-            </p>
+            <p className="text-sm font-bold text-foreground">표시할 실제 학생 정보가 아직 없습니다.</p>
             <p className="mt-1 text-xs leading-5 text-muted">승인된 성장 기록이 완성되면 전체 리포트가 자동으로 표시됩니다.</p>
           </div>
         </div>

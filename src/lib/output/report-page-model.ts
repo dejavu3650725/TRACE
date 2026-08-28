@@ -19,7 +19,6 @@ export interface ReportPageStats {
   submissionCount: number;
   approvedAnalysisCount: number;
   evidenceCount: number;
-  latestStudentLabel: string | null;
 }
 
 type ReportStudent = Pick<Student, "id" | "student_number" | "name" | "is_active">;
@@ -85,5 +84,4 @@ export const EMPTY_REPORT_PAGE_STATS: ReportPageStats = {
   submissionCount: 0,
   approvedAnalysisCount: 0,
   evidenceCount: 0,
-  latestStudentLabel: null,
 };

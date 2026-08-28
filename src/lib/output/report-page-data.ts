@@ -1,5 +1,4 @@
 import { STORAGE } from "../config";
-import { createClient } from "../supabase/server";
 import {
   APPROVED_OUTPUT_ANALYSIS_STATUSES,
   isObservedOnlyStructuredInput,
@@ -149,6 +148,7 @@ function subjectLabel(timepoints: readonly ReportPageTimepoint[]): string {
 function candidateFromLink(
   growthEvent: LiveGrowthEventRow,
   link: LiveGrowthEvidenceLinkRow,
+  teacherId: string,
   sourceUrls: ReadonlyMap<string, string>,
 ): ReportPageTimepoint | null {
   const evidence = one(link.evidence);
@@ -168,6 +168,13 @@ function candidateFromLink(
     !activity ||
     !artifact ||
     !review ||
+    link.growth_event_id !== growthEvent.id ||
+    link.evidence_id !== evidence.id ||
+    evidence.analysis_id !== analysis.id ||
+    evidence.artifact_id !== artifact.id ||
+    analysis.submission_id !== submission.id ||
+    artifact.submission_id !== submission.id ||
+    review.reviewer_id !== teacherId ||
     submission.student_id !== growthEvent.student_id ||
     !isObservedOnlyStructuredInput(submission.structured_input) ||
     !APPROVED_OUTPUT_ANALYSIS_STATUSES.includes(analysis.status) ||
@@ -241,13 +248,14 @@ function candidateFromLink(
 export function mapLiveReportRows(
   growthEvent: LiveGrowthEventRow,
   links: readonly LiveGrowthEvidenceLinkRow[],
+  teacherId: string,
   sourceUrls: ReadonlyMap<string, string> = new Map(),
 ): ReportPageModel | null {
   const student = one(growthEvent.students);
-  if (!student || growthEvent.status !== "APPROVED") return null;
+  if (!student || student.id !== growthEvent.student_id || growthEvent.status !== "APPROVED") return null;
 
   const candidates = links
-    .map((link) => candidateFromLink(growthEvent, link, sourceUrls))
+    .map((link) => candidateFromLink(growthEvent, link, teacherId, sourceUrls))
     .filter((timepoint): timepoint is ReportPageTimepoint => timepoint !== null)
     .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -293,6 +301,27 @@ export function mapLiveReportRows(
   };
 }
 
+export function mapLatestLiveReportRows(
+  growthEvents: readonly LiveGrowthEventRow[],
+  links: readonly LiveGrowthEvidenceLinkRow[],
+  teacherId: string,
+  sourceUrls: ReadonlyMap<string, string> = new Map(),
+): ReportPageModel | null {
+  const newestFirst = [...growthEvents].sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+  for (const growthEvent of newestFirst) {
+    const report = mapLiveReportRows(
+      growthEvent,
+      links.filter((link) => link.growth_event_id === growthEvent.id),
+      teacherId,
+      sourceUrls,
+    );
+    if (report) return report;
+  }
+
+  return null;
+}
+
 function hasSupabaseEnvironment(): boolean {
   return Boolean(
     (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL) &&
@@ -300,68 +329,67 @@ function hasSupabaseEnvironment(): boolean {
   );
 }
 
-function artifactPaths(links: readonly LiveGrowthEvidenceLinkRow[]): string[] {
-  return [
-    ...new Set(
-      links
-        .map((link) => one(one(link.evidence)?.artifacts)?.storage_path ?? null)
-        .filter((path): path is string => path !== null),
-    ),
-  ];
+function artifactPaths(report: ReportPageModel): string[] {
+  return [...new Set(report.timepoints.map(({ artifact }) => artifact.storage_path))];
 }
 
 export async function loadLatestReportPageData(): Promise<ReportPageData> {
-  if (!hasSupabaseEnvironment()) {
+  if (!hasSupabaseEnvironment() || process.env.NEXT_PUBLIC_AUTH_BYPASS === "true") {
     return { report: null, stats: EMPTY_REPORT_PAGE_STATS };
   }
 
-  const supabase = await createClient();
-  const [students, submissions, approvedAnalyses, evidence, latestStudent] = await Promise.all([
-    supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true),
-    supabase.from("submissions").select("id", { count: "exact", head: true }).not("submitted_at", "is", null),
+  const { requireTeacherReportScope } = await import("../auth/ownership");
+  const { teacherId, supabase } = await requireTeacherReportScope();
+  const [students, submissions, approvedAnalyses, evidence] = await Promise.all([
     supabase
-      .from("analyses")
-      .select("id", { count: "exact", head: true })
-      .in("status", APPROVED_OUTPUT_ANALYSIS_STATUSES),
-    supabase.from("evidence").select("id", { count: "exact", head: true }),
+      .from("students")
+      .select("id, classes!inner(teacher_id)", { count: "exact", head: true })
+      .eq("classes.teacher_id", teacherId)
+      .eq("is_active", true),
     supabase
       .from("submissions")
-      .select("submitted_at, students!inner(student_number, name)")
-      .not("submitted_at", "is", null)
-      .order("submitted_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .select("id, activity_assignments!inner(activities!inner(teacher_id))", { count: "exact", head: true })
+      .eq("activity_assignments.activities.teacher_id", teacherId)
+      .not("submitted_at", "is", null),
+    supabase
+      .from("analyses")
+      .select(
+        "id, submissions!inner(activity_assignments!inner(activities!inner(teacher_id)))",
+        { count: "exact", head: true },
+      )
+      .eq("submissions.activity_assignments.activities.teacher_id", teacherId)
+      .in("status", APPROVED_OUTPUT_ANALYSIS_STATUSES),
+    supabase
+      .from("evidence")
+      .select(
+        "id, analyses!inner(submissions!inner(activity_assignments!inner(activities!inner(teacher_id))))",
+        { count: "exact", head: true },
+      )
+      .eq("analyses.submissions.activity_assignments.activities.teacher_id", teacherId),
   ]);
 
-  const queryUnavailable = [students, submissions, approvedAnalyses, evidence, latestStudent].some(
+  const queryUnavailable = [students, submissions, approvedAnalyses, evidence].some(
     ({ error }) => Boolean(error),
   );
-  const latestSubmission = latestStudent.data as {
-    submitted_at: string | null;
-    students: Relation<{ student_number: number; name: string }>;
-  } | null;
-  const latest = latestSubmission ? one(latestSubmission.students) : null;
   const stats: ReportPageStats = {
     connection: queryUnavailable ? "unavailable" : "ready",
     studentCount: students.count ?? 0,
     submissionCount: submissions.count ?? 0,
     approvedAnalysisCount: approvedAnalyses.count ?? 0,
     evidenceCount: evidence.count ?? 0,
-    latestStudentLabel: latest ? `${latest.student_number}번 ${latest.name}` : null,
   };
 
   const growthResult = await supabase
     .from("growth_events")
     .select(
-      "id, student_id, description, status, created_at, students!inner(id, student_number, name, is_active, classes!inner(name))",
+      "id, student_id, description, status, created_at, students!inner(id, student_number, name, is_active, classes!inner(name, teacher_id))",
     )
+    .eq("students.classes.teacher_id", teacherId)
     .eq("status", "APPROVED")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
 
-  const growthEvent = growthResult.data as LiveGrowthEventRow | null;
-  if (growthResult.error || !growthEvent) {
+  const growthEvents = (growthResult.data ?? []) as unknown as LiveGrowthEventRow[];
+  if (growthResult.error || growthEvents.length === 0) {
     return { report: null, stats };
   }
 
@@ -384,13 +412,15 @@ export async function loadLatestReportPageData(): Promise<ReportPageData> {
          artifacts(id, submission_id, storage_path, file_name, mime_type, artifact_role, page_start, page_end)
        )`,
     )
-    .eq("growth_event_id", growthEvent.id);
+    .in("growth_event_id", growthEvents.map(({ id }) => id));
 
   if (linkResult.error) return { report: null, stats };
   const links = (linkResult.data ?? []) as unknown as LiveGrowthEvidenceLinkRow[];
+  const unsignedReport = mapLatestLiveReportRows(growthEvents, links, teacherId);
+  if (!unsignedReport) return { report: null, stats };
 
   const signedEntries = await Promise.all(
-    artifactPaths(links).map(async (path) => {
+    artifactPaths(unsignedReport).map(async (path) => {
       const { data } = await supabase.storage.from(STORAGE.BUCKET).createSignedUrl(path, 600);
       return [path, data?.signedUrl ?? null] as const;
     }),
@@ -400,7 +430,7 @@ export async function loadLatestReportPageData(): Promise<ReportPageData> {
   );
 
   return {
-    report: mapLiveReportRows(growthEvent, links, sourceUrls),
+    report: mapLatestLiveReportRows(growthEvents, links, teacherId, sourceUrls),
     stats,
   };
 }

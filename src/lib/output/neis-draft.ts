@@ -5,9 +5,6 @@ export const NEIS_GUIDELINE_METADATA = {
   sourceLabel: "2026학년도 학교생활기록부 기재요령 참고",
 } as const;
 
-export const SYNTHETIC_NEIS_DRAFT =
-  "분수 모형에서 4등분한 전체 중 2부분을 색칠해 2/4로 나타냄. 이후 8등분한 모형의 4부분과 4등분한 모형의 2부분이 같은 양임을 확인하고 4/8 = 2/4로 표현함. 두 활동을 통해 부분과 전체의 관계를 분수와 모형으로 연결하는 과정이 구체적으로 드러남.";
-
 const REVIEW_TERMS = [
   "교외",
   "대회",
