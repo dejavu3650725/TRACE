@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { analyzeOneSubmission } from "@/features/process/run";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 /**
- * ISSUE-19 — 제출 완료 확정
- * 사진이 1장 이상 업로드된 Submission만 READY_FOR_PROCESS로 전환한다.
+ * ISSUE-19 — 제출 완료 확정 + 즉시 자동 AI 분석
+ * 사진이 1장 이상 업로드된 Submission만 READY_FOR_PROCESS로 전환하고,
+ * 응답 반환 직후 서버에서 바로 분석을 시작한다 (교사는 검토 대기에서 초안을 받는다).
  */
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -18,18 +22,16 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: submission } = await supabase
     .from("submissions")
-    .select("id, submission_code, activity_assignments ( status )")
+    .select("id, submission_code, activity_assignments ( status, classes ( teacher_id ) )")
     .eq("id", submissionId)
     .maybeSingle();
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const one = (v: any) => (Array.isArray(v) ? v[0] : v);
-  if (
-    !submission ||
-    submission.submission_code !== sessionCode ||
-    one(submission.activity_assignments)?.status !== "OPEN"
-  ) {
+  const assignment = submission ? one(submission.activity_assignments) : null;
+  if (!submission || submission.submission_code !== sessionCode || assignment?.status !== "OPEN") {
     return NextResponse.json({ ok: false, message: "제출 세션이 만료됐어요." }, { status: 403 });
   }
+  const teacherId = one(assignment?.classes)?.teacher_id as string | undefined;
 
   const { count } = await supabase
     .from("artifacts")
@@ -49,6 +51,45 @@ export async function POST(req: NextRequest) {
     .eq("id", submissionId);
   if (error) {
     return NextResponse.json({ ok: false, message: "제출 확정에 실패했어요." }, { status: 500 });
+  }
+
+  // ── 제출 즉시 자동 AI 분석 (응답 반환 후 백그라운드) ──
+  // 학생은 기다리지 않고, 교사는 검토 대기에서 AI 초안을 받는다. 실패해도 제출은 유효하며
+  // 교사가 평가관리에서 다시 [분석 실행]을 누를 수 있다.
+  if (teacherId) {
+    after(async () => {
+      const { data: job } = await supabase
+        .from("processing_jobs")
+        .insert({
+          teacher_id: teacherId,
+          job_type: "ANALYSIS",
+          status: "PROCESSING",
+          total_count: 1,
+          payload_json: { submission_ids: [submissionId], trigger: "student_submit" },
+        })
+        .select("id")
+        .single();
+      let failed = false;
+      let lastError: string | null = null;
+      try {
+        await analyzeOneSubmission(supabase, submissionId);
+      } catch (e) {
+        failed = true;
+        lastError = e instanceof Error ? e.message.slice(0, 500) : "알 수 없는 오류";
+        console.error("[student-submit] auto analysis failed", lastError);
+      }
+      if (job) {
+        await supabase
+          .from("processing_jobs")
+          .update({
+            status: failed ? "FAILED" : "COMPLETED",
+            completed_count: failed ? 0 : 1,
+            failed_count: failed ? 1 : 0,
+            error_message: lastError,
+          })
+          .eq("id", job.id);
+      }
+    });
   }
 
   return NextResponse.json({ ok: true, page_count: count });
