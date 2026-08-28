@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Link2 } from "lucide-react";
+import QRCode from "qrcode";
+import { ArrowLeft, Link2, QrCode, RefreshCcw } from "lucide-react";
+import { issueSubmissionToken, revokeSubmissionToken } from "@/features/activities/token-actions";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -34,7 +37,7 @@ export default async function ActivityAssignPage({
   searchParams,
 }: {
   params: Promise<{ activityId: string }>;
-  searchParams: Promise<{ assigned?: string; updated?: string; "assignment-error"?: string }>;
+  searchParams: Promise<{ assigned?: string; updated?: string; token?: string; "assignment-error"?: string }>;
 }) {
   const { activityId } = await params;
   const query = await searchParams;
@@ -55,6 +58,23 @@ export default async function ActivityAssignPage({
   if (assignmentsError) throw new Error("ActivityAssignment list lookup failed", { cause: assignmentsError });
   if (!activity) notFound();
 
+  // ISSUE-17: QR은 /submit/[token]만 담는다 — 학생/교사 정보 없음 (PII 금지)
+  const headerList = await headers();
+  const host = headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "localhost:3000";
+  const proto = headerList.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const baseUrl = `${proto}://${host}`;
+  const qrByAssignment = new Map<string, { url: string; dataUrl: string }>();
+  for (const assignment of assignments ?? []) {
+    if (!assignment.submission_token) continue;
+    const url = `${baseUrl}/submit/${assignment.submission_token}`;
+    const dataUrl = await QRCode.toDataURL(url, {
+      margin: 1,
+      width: 220,
+      color: { dark: "#101b30", light: "#ffffff" },
+    });
+    qrByAssignment.set(assignment.id, { url, dataUrl });
+  }
+
   const assignedClassIds = new Set(assignments?.map((assignment) => assignment.class_id) ?? []);
   const availableClasses = classes?.filter((classItem) => classItem.is_active && !assignedClassIds.has(classItem.id)) ?? [];
   const classesById = new Map(classes?.map((classItem) => [classItem.id, classItem]) ?? []);
@@ -68,6 +88,9 @@ export default async function ActivityAssignPage({
       />
       {query.assigned !== undefined && <p className="rounded-lg bg-success-bg px-4 py-3 text-sm text-success">새 학급 {Number(query.assigned)}곳에 활동을 배정했어요. 이미 배정된 학급은 중복 생성하지 않았어요.</p>}
       {query.updated === "1" && <p className="rounded-lg bg-success-bg px-4 py-3 text-sm text-success">배정 상태와 일정을 저장했어요.</p>}
+      {query.token === "issued" && <p className="rounded-lg bg-success-bg px-4 py-3 text-sm text-success">제출 QR을 발급했어요. 학생들에게 QR을 보여주면 바로 제출할 수 있어요.</p>}
+      {query.token === "revoked" && <p className="rounded-lg bg-success-bg px-4 py-3 text-sm text-success">제출 QR을 회수했어요. 기존 링크로는 더 이상 제출할 수 없어요.</p>}
+      {query["assignment-error"] === "token-closed" && <p className="rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger">제출 가능(OPEN) 상태의 배정에서만 QR을 발급할 수 있어요.</p>}
       {query["assignment-error"] === "invalid-input" && <p className="rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger">배정할 학급과 일정을 확인해 주세요. 마감 시각은 시작 시각보다 빨라서는 안 돼요.</p>}
       {query["assignment-error"] === "save-failed" && <p className="rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger">활동 배정을 저장하지 못했어요. 소유권과 DB 마이그레이션을 확인해 주세요.</p>}
 
@@ -108,16 +131,54 @@ export default async function ActivityAssignPage({
             {assignments.map((assignment) => {
               const classItem = classesById.get(assignment.class_id);
               const status = assignmentStatus[assignment.status as keyof typeof assignmentStatus];
+              const qr = qrByAssignment.get(assignment.id);
               return (
-                <form key={assignment.id} action={updateActivityAssignment} className="grid gap-3 rounded-xl border border-border p-4 xl:grid-cols-[1fr_160px_210px_210px_auto] xl:items-end">
-                  <input type="hidden" name="activityId" value={activity.id} />
-                  <input type="hidden" name="assignmentId" value={assignment.id} />
-                  <div><p className="font-bold text-foreground">{classItem?.name ?? "소유 학급"}</p><div className="mt-2 flex items-center gap-2"><StatusBadge label={status.label} tone={status.tone} /><span className="inline-flex items-center gap-1 text-xs text-muted"><Link2 className="h-3.5 w-3.5" /> {assignment.submission_token ? "제출 토큰 있음" : "QR 미발급"}</span></div></div>
-                  <label className="grid gap-1.5 text-sm font-medium text-foreground">상태<select name="status" defaultValue={assignment.status} className="rounded-lg border border-border bg-background px-3 py-2"><option value="OPEN">제출 가능</option><option value="CLOSED">제출 마감</option><option value="ARCHIVED">보관됨</option></select></label>
-                  <label className="grid gap-1.5 text-sm font-medium text-foreground">제출 시작<input type="datetime-local" name="openAt" defaultValue={koreanDateTimeInput(assignment.open_at)} className="rounded-lg border border-border bg-background px-3 py-2" /></label>
-                  <label className="grid gap-1.5 text-sm font-medium text-foreground">제출 마감<input type="datetime-local" name="dueAt" defaultValue={koreanDateTimeInput(assignment.due_at)} className="rounded-lg border border-border bg-background px-3 py-2" /></label>
-                  <button type="submit" className="rounded-lg border border-brand-600 px-4 py-2.5 text-sm font-bold text-brand-700 hover:bg-brand-50">저장</button>
-                </form>
+                <div key={assignment.id} className="rounded-xl border border-border">
+                  <form action={updateActivityAssignment} className="grid gap-3 p-4 xl:grid-cols-[1fr_160px_210px_210px_auto] xl:items-end">
+                    <input type="hidden" name="activityId" value={activity.id} />
+                    <input type="hidden" name="assignmentId" value={assignment.id} />
+                    <div><p className="font-bold text-foreground">{classItem?.name ?? "소유 학급"}</p><div className="mt-2 flex items-center gap-2"><StatusBadge label={status.label} tone={status.tone} /><span className="inline-flex items-center gap-1 text-xs text-muted"><Link2 className="h-3.5 w-3.5" /> {assignment.submission_token ? "제출 QR 발급됨" : "QR 미발급"}</span></div></div>
+                    <label className="grid gap-1.5 text-sm font-medium text-foreground">상태<select name="status" defaultValue={assignment.status} className="rounded-lg border border-border bg-background px-3 py-2"><option value="OPEN">제출 가능</option><option value="CLOSED">제출 마감</option><option value="ARCHIVED">보관됨</option></select></label>
+                    <label className="grid gap-1.5 text-sm font-medium text-foreground">제출 시작<input type="datetime-local" name="openAt" defaultValue={koreanDateTimeInput(assignment.open_at)} className="rounded-lg border border-border bg-background px-3 py-2" /></label>
+                    <label className="grid gap-1.5 text-sm font-medium text-foreground">제출 마감<input type="datetime-local" name="dueAt" defaultValue={koreanDateTimeInput(assignment.due_at)} className="rounded-lg border border-border bg-background px-3 py-2" /></label>
+                    <button type="submit" className="rounded-lg border border-brand-600 px-4 py-2.5 text-sm font-bold text-brand-700 hover:bg-brand-50">저장</button>
+                  </form>
+
+                  {/* ISSUE-17: 제출 QR — 토큰은 배정만 식별, 학생 정보 없음 */}
+                  <div className="border-t border-border bg-background/60 p-4">
+                    {qr ? (
+                      <div className="flex flex-wrap items-center gap-5">
+                        {/* QR 이미지는 서버에서 생성한 data URL — 외부 요청 없음 */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={qr.dataUrl} alt="학생 제출 QR 코드" className="h-36 w-36 rounded-xl border border-border bg-white p-1.5" />
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <p className="flex items-center gap-1.5 text-sm font-bold text-foreground"><QrCode className="h-4 w-4 text-brand-600" /> 학생 제출 QR</p>
+                          <p className="break-all rounded-lg bg-surface px-3 py-2 font-mono text-xs text-muted">{qr.url}</p>
+                          <p className="text-xs text-muted">학생은 QR 스캔 → 학급 코드·번호·이름 확인 → 활동지 촬영 제출. 이름이나 번호는 QR에 담기지 않아요.</p>
+                          <div className="flex gap-2">
+                            <form action={issueSubmissionToken}>
+                              <input type="hidden" name="activityId" value={activity.id} />
+                              <input type="hidden" name="assignmentId" value={assignment.id} />
+                              <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground hover:bg-neutral-bg"><RefreshCcw className="h-3.5 w-3.5" /> 재발급 (기존 QR 무효화)</button>
+                            </form>
+                            <form action={revokeSubmissionToken}>
+                              <input type="hidden" name="activityId" value={activity.id} />
+                              <input type="hidden" name="assignmentId" value={assignment.id} />
+                              <button type="submit" className="rounded-lg border border-danger/30 px-3 py-2 text-xs font-bold text-danger hover:bg-danger-bg">회수</button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <form action={issueSubmissionToken} className="flex items-center justify-between gap-3">
+                        <p className="text-sm text-muted">학생이 계정 없이 QR로 접속해 제출하려면 QR을 발급하세요.</p>
+                        <input type="hidden" name="activityId" value={activity.id} />
+                        <input type="hidden" name="assignmentId" value={assignment.id} />
+                        <button type="submit" disabled={assignment.status !== "OPEN"} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"><QrCode className="h-4 w-4" /> 제출 QR 발급</button>
+                      </form>
+                    )}
+                  </div>
+                </div>
               );
             })}
           </div>
