@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { TeacherAppShell } from "@/components/shell/TeacherAppShell";
 import { getSessionTeacher } from "@/lib/auth/teacher";
+import { createClient } from "@/lib/supabase/server";
 import { getTeacherDisplayName } from "@/shared/displayName";
 
 /**
@@ -18,6 +19,7 @@ export default async function TeacherLayout({
   children: React.ReactNode;
 }) {
   let displayName = "선생님";
+  let reviewPendingCount = 0;
 
   const bypass = process.env.NEXT_PUBLIC_AUTH_BYPASS === "true";
   const hasSupabaseEnv = Boolean(
@@ -32,5 +34,19 @@ export default async function TeacherLayout({
     displayName = getTeacherDisplayName(teacher);
   }
 
-  return <TeacherAppShell displayName={displayName}>{children}</TeacherAppShell>;
+  // TopBar 알림 배지 — 검토 대기 건수 (TRD §33)
+  if (hasSupabaseEnv) {
+    const supabase = await createClient();
+    const { count } = await supabase
+      .from("submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("process_status", "REVIEW_REQUIRED");
+    reviewPendingCount = count ?? 0;
+  }
+
+  return (
+    <TeacherAppShell displayName={displayName} reviewPendingCount={reviewPendingCount}>
+      {children}
+    </TeacherAppShell>
+  );
 }
