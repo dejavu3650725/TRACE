@@ -7,6 +7,7 @@ import { requireSessionTeacher } from "@/lib/auth/teacher";
 import { getCurriculumLoader } from "@/lib/curriculum/loader-full";
 import { getVlmAdapter } from "@/lib/ai/vlm-adapter";
 import { createPrivacySafeVlmRequest } from "@/lib/ai/privacy-context";
+import { containsProhibitedAiContext } from "@/lib/ai/privacy-guard";
 import { VlmAdapterRequestError } from "@/lib/ai/contracts";
 import { FILE_LIMITS } from "@/lib/config";
 
@@ -56,6 +57,19 @@ export async function createQrFromWorksheet(
   _prev: QuickQrState,
   formData: FormData,
 ): Promise<QuickQrState> {
+  // 어떤 실패도 화면 전체를 무너뜨리지 않고 인라인 메시지로 보여준다
+  try {
+    return await runQuickQr(formData);
+  } catch (error) {
+    // redirect()는 예외로 전파되는 정상 흐름이므로 그대로 통과시킨다
+    if (error && typeof error === "object" && "digest" in error) throw error;
+    console.error("[quick-qr] failed:", error);
+    const detail = error instanceof Error ? error.message.slice(0, 180) : "알 수 없는 오류";
+    return { status: "error", message: `활동 생성에 실패했어요 — ${detail}` };
+  }
+}
+
+async function runQuickQr(formData: FormData): Promise<QuickQrState> {
   const { teacher, supabase } = await requireSessionTeacher();
 
   const classId = String(formData.get("classId") ?? "");
@@ -93,8 +107,14 @@ export async function createQrFromWorksheet(
   if (candidates.length === 0) {
     return { status: "error", message: `${gradeBand} 성취기준 데이터가 없어요.` };
   }
+  // 개인정보 가드 오탐 방지: 교육과정 문장의 "학생"을 "학습자"로 치환하고,
+  // 그래도 가드에 걸리는 줄은 후보에서 제외한다 (가드는 절대 우회하지 않는다).
   const candidateLines = candidates
-    .map((s) => `${s.id} | ${s.subject} | ${s.domain} | ${s.description.slice(0, 90)}`)
+    .map((s) => {
+      const description = s.description.slice(0, 90).replaceAll("학생", "학습자");
+      return `${s.id} | ${s.subject} | ${s.domain} | ${description}`;
+    })
+    .filter((line) => !containsProhibitedAiContext(line))
     .join("\n");
 
   const prompt = `당신은 대한민국 초등 교사의 수업 설계를 보조합니다.
