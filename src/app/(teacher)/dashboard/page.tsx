@@ -112,7 +112,7 @@ export default async function DashboardPage() {
           value={approvedCount}
           tone="brand"
           icon={<CheckCircle2 className="h-4.5 w-4.5" />}
-          href="/analysis"
+          href="/analysis#approved"
           hint={approvedCount === 0 ? "승인된 분석이 없어요" : "확정된 학습 근거"}
         />
       </div>

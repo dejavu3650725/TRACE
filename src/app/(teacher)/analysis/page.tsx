@@ -58,6 +58,18 @@ export default async function AnalysisPage() {
     .order("created_at", { ascending: true })
     .limit(100);
 
+  // 승인 완료: 확정된 학습 근거 (다시 열람 가능)
+  const { data: approvedList } = await supabase
+    .from("analyses")
+    .select(
+      `id, status, updated_at, version_no,
+       submissions ( id, students ( name, student_number ),
+         activity_assignments ( activities ( title ) ) )`,
+    )
+    .in("status", ["APPROVED", "EDITED_APPROVED"])
+    .order("updated_at", { ascending: false })
+    .limit(100);
+
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const one = (v: any) => (Array.isArray(v) ? v[0] : v);
   const rows: AnalysisTargetRow[] = (targets ?? []).map((t: any) => {
@@ -72,7 +84,7 @@ export default async function AnalysisPage() {
     };
   });
 
-  const draftRows = (drafts ?? []).map((d: any) => {
+  const toRow = (d: any) => {
     const submission = one(d.submissions);
     const student = one(submission?.students);
     const activity = one(one(submission?.activity_assignments)?.activities);
@@ -83,7 +95,9 @@ export default async function AnalysisPage() {
       studentLabel: student ? `${student.student_number}번 ${student.name}` : "학생 미상",
       activityTitle: activity?.title ?? "활동 미상",
     };
-  });
+  };
+  const draftRows = (drafts ?? []).map(toRow);
+  const approvedRows = (approvedList ?? []).map(toRow);
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return (
@@ -112,6 +126,43 @@ export default async function AnalysisPage() {
         ) : (
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)]">
             {draftRows.map((d) => (
+              <li key={d.id}>
+                <Link
+                  href={`/analysis/${d.id}/review`}
+                  className="flex items-center justify-between gap-3 px-5 py-4 transition-colors duration-150 hover:bg-brand-50/40"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-foreground">
+                      {d.studentLabel} · {d.activityTitle}
+                    </span>
+                    <span className="text-xs text-muted">분석 v{d.versionNo}</span>
+                  </span>
+                  <StatusBadge
+                    label={ANALYSIS_STATUS_LABEL[d.status].label}
+                    tone={ANALYSIS_STATUS_LABEL[d.status].tone}
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section id="approved" className="space-y-3">
+        <h2 className="text-lg font-bold text-foreground">
+          승인 완료{" "}
+          <span className="ml-1 text-sm font-medium text-muted">
+            확정된 학습 근거예요. 클릭하면 다시 열람할 수 있어요
+          </span>
+        </h2>
+        {approvedRows.length === 0 ? (
+          <EmptyState
+            title="아직 승인된 분석이 없어요"
+            description="검토 대기의 AI 초안을 승인하면 여기에 확정 근거로 쌓여요."
+          />
+        ) : (
+          <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-card)]">
+            {approvedRows.map((d) => (
               <li key={d.id}>
                 <Link
                   href={`/analysis/${d.id}/review`}
