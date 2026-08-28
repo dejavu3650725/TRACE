@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ComponentProps } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -25,6 +26,16 @@ import {
 } from "@/shared/types/status";
 
 export const metadata: Metadata = { title: "리포트" };
+
+type ReportStatusBadgeProps = ComponentProps<typeof StatusBadge>;
+
+function ReportStatusBadge({ className, ...props }: ReportStatusBadgeProps) {
+  return (
+    <span className="inline-flex [&>span]:!text-foreground">
+      <StatusBadge {...props} className={className} />
+    </span>
+  );
+}
 
 function formatObservedDate(date: string) {
   return new Intl.DateTimeFormat("ko-KR", {
@@ -75,11 +86,20 @@ export default function ReportsPage() {
   }));
 
   return (
-    <div className="space-y-8">
+    <div
+      data-report-surface
+      className="fixed inset-y-0 left-0 z-[60] min-h-dvh w-screen overflow-x-hidden overflow-y-auto bg-background px-4 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:static md:z-auto md:min-h-0 md:w-auto md:overflow-visible md:bg-transparent md:p-0"
+    >
+      <div className="mx-auto w-full min-w-0 max-w-6xl space-y-8">
+        <div className="flex items-center gap-2 md:hidden" aria-label="TRACE 리포트">
+          <span className="text-sm font-black tracking-[0.16em] text-brand-600">TRACE</span>
+          <span className="text-muted">/</span>
+          <span className="text-sm font-semibold text-foreground">리포트</span>
+        </div>
       <PageHeader
         title="학습 성장 리포트"
         description="관찰된 입력과 교사 승인 근거가 성장 기록으로 이어지는 과정을 확인해요."
-        actions={<StatusBadge label="합성 데이터 데모" tone="brand" />}
+        actions={<ReportStatusBadge label="합성 데이터 데모" tone="brand" />}
       />
 
       <section
@@ -125,7 +145,7 @@ export default function ReportsPage() {
                   {activityReportDemo.student.student_number}번 {activityReportDemo.student.name}의 두 활동 기록
                 </p>
               </div>
-              <StatusBadge label="입력 확인 완료" tone="success" />
+              <ReportStatusBadge label="입력 확인 완료" tone="success" />
             </div>
 
             <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(0,1.2fr)]">
@@ -172,8 +192,8 @@ export default function ReportsPage() {
                         <Braces className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <StatusBadge label={inputStatus.label} tone={inputStatus.tone} />
-                        <StatusBadge label={processStatus.label} tone={processStatus.tone} />
+                        <ReportStatusBadge label={inputStatus.label} tone={inputStatus.tone} />
+                        <ReportStatusBadge label={processStatus.label} tone={processStatus.tone} />
                       </div>
                       <dl className="mt-4 space-y-2 text-sm">
                         {submission.structured_input.questions.map((question) => (
@@ -212,7 +232,7 @@ export default function ReportsPage() {
                 </h2>
                 <p className="mt-1 text-sm text-muted">교사 검토를 통과한 분석만 다음 단계로 연결합니다.</p>
               </div>
-              <StatusBadge label="승인 근거만 표시" tone="success" />
+              <ReportStatusBadge label="승인 근거만 표시" tone="success" />
             </div>
 
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -226,7 +246,7 @@ export default function ReportsPage() {
                         <p className="text-xs font-semibold text-muted">{formatObservedDate(timepoint.date)}</p>
                         <h3 className="mt-1 font-semibold text-foreground">{timepoint.activity.title}</h3>
                       </div>
-                      <StatusBadge label={analysisStatus.label} tone={analysisStatus.tone} />
+                      <ReportStatusBadge label={analysisStatus.label} tone={analysisStatus.tone} />
                     </div>
 
                     <div className="mt-4 rounded-xl border border-info/20 bg-info-bg/50 p-3">
@@ -295,7 +315,7 @@ export default function ReportsPage() {
                   <p className="mt-1 text-sm text-muted">두 Evidence가 모두 연결된 GrowthEvent입니다.</p>
                 </div>
               </div>
-              <StatusBadge label="성장 기록 승인" tone="success" />
+              <ReportStatusBadge label="성장 기록 승인" tone="success" />
             </div>
 
             <p className="mt-5 max-w-3xl text-base leading-7 text-foreground">
@@ -322,6 +342,7 @@ export default function ReportsPage() {
           </section>
         </li>
       </ol>
+      </div>
     </div>
   );
 }
