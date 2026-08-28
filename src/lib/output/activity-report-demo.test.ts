@@ -66,6 +66,47 @@ test("StructuredInput has observed-only fields and rejects judgment-shaped input
   );
 });
 
+test("StructuredInput rejects every observed_text injection regardless of wording", () => {
+  for (const observedText of [
+    "The student mastered fractions and is successful.",
+    "The student understands fractions.",
+    "The student has a misconception about fractions.",
+    "학생은 분수를 이해했다.",
+  ]) {
+    const observedTextInjection = {
+      ...activityReportDemo.timepoints[0].submission.structured_input,
+      questions: activityReportDemo.timepoints[0].submission.structured_input.questions.map((question) => ({
+        ...question,
+        response: { ...question.response, observed_text: observedText },
+      })),
+    };
+
+    assert.equal(isObservedOnlyStructuredInput(observedTextInjection), false);
+    assert.throws(
+      () => selectApprovedOutputAnalyses(observedTextInjection, activityReportDemo.timepoints[0].analyses),
+      /observed-only/i,
+    );
+  }
+});
+
+test("StructuredInput preserves educational vocabulary in student-authored literal fields", () => {
+  const rawStudentText = {
+    schema_version: "observed-input-v0.1",
+    questions: [
+      {
+        question_id: "q-student-literal",
+        response_type: "long_text",
+        response: { raw_text: "I mastered fractions and my score improved." },
+      },
+    ],
+  };
+  const writtenExpression = structuredClone(activityReportDemo.timepoints[0].submission.structured_input);
+  writtenExpression.questions[0].response.written_expression = "성취 수준: 2/4";
+
+  assert.equal(isObservedOnlyStructuredInput(rawStudentText), true);
+  assert.equal(isObservedOnlyStructuredInput(writtenExpression), true);
+});
+
 test("StructuredInput rejects ai_inference fields from validator and selector", () => {
   const aiInferenceInput = {
     ...activityReportDemo.timepoints[0].submission.structured_input,

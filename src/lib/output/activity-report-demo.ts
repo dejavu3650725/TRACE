@@ -76,8 +76,9 @@ const OBSERVED_RESPONSE_SCHEMAS = {
   selection: { selected_option: "number" },
   long_text: { raw_text: "string" },
   work_sample: {
-    observed_text: "string",
-    selected_representation: "string",
+    marked_parts: "number",
+    total_parts: "number",
+    written_expression: "string",
   },
 } as const satisfies Record<string, ResponseSchema>;
 
@@ -168,8 +169,9 @@ export const activityReportDemo = {
               question_id: "q-fraction-model-1",
               response_type: "work_sample",
               response: {
-                observed_text: "Two of four equal parts are shaded.",
-                selected_representation: "2/4",
+                marked_parts: 2,
+                total_parts: 4,
+                written_expression: "2/4",
               },
             },
           ],
@@ -269,8 +271,9 @@ export const activityReportDemo = {
               question_id: "q-fraction-equivalence-1",
               response_type: "work_sample",
               response: {
-                observed_text: "The student grouped four eighths into two fourths.",
-                selected_representation: "4/8 = 2/4",
+                marked_parts: 4,
+                total_parts: 8,
+                written_expression: "4/8 = 2/4",
               },
             },
           ],
