@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { createClient } from "@/lib/supabase/server";
-import { getStandard } from "@/lib/curriculum/loader";
+import { resolveStandards } from "@/lib/curriculum/resolve";
 import { SUBJECT_DOMAINS, parseStandardDomain } from "@/lib/curriculum/domains";
 import { DomainRadar, type DomainAxis } from "@/components/charts/DomainRadar";
 
@@ -159,7 +159,7 @@ export default async function StudentReportPage({
   // ── ③ 후속학습 제안: 성취기준의 다음 단계 기술 + 반복 어려움 보충 ──
   const LEVEL_ORDER = ["하", "중", "상"];
   const suggestions: Array<{ title: string; body: string }> = [];
-  const latestStandards = latest.standardIds.map((id) => getStandard(id)).filter(Boolean);
+  const latestStandards = await resolveStandards(latest.standardIds);
   for (const std of latestStandards.slice(0, 2)) {
     if (!std) continue;
     const idx = LEVEL_ORDER.indexOf(latest.level);

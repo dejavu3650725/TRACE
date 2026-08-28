@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { requireSessionTeacher } from "@/lib/auth/teacher";
 import { issueSubmissionToken } from "@/features/activities/token-actions";
+import { QuickQrPanel } from "@/features/activities/QuickQrPanel";
 
 export const metadata: Metadata = { title: "학생 직접 제출" };
 export const dynamic = "force-dynamic";
@@ -17,8 +18,18 @@ export const dynamic = "force-dynamic";
  * 제출 가능(OPEN) 배정의 QR을 한 화면에서 발급·공유한다.
  * QR에는 학생 정보가 담기지 않는다 — /submit/[token] 링크만.
  */
-export default async function ResultsSharePage() {
+export default async function ResultsSharePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ quick?: string; token?: string }>;
+}) {
+  const { quick } = await searchParams;
   const { supabase } = await requireSessionTeacher();
+  const { data: teacherClasses } = await supabase
+    .from("classes")
+    .select("id, name")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
   const { data: assignments } = await supabase
     .from("activity_assignments")
     .select("id, submission_token, status, activities ( id, title ), classes ( name, class_code, class_code_expires_at )")
@@ -66,6 +77,14 @@ export default async function ResultsSharePage() {
         title="학생 직접 제출"
         description="QR을 화면에 띄우면 학생이 자기 기기로 스캔해 활동지를 촬영·제출해요."
       />
+
+      {quick === "created" && (
+        <p className="rounded-2xl border border-success/20 bg-success-bg px-4 py-3 text-sm font-semibold text-success">
+          ✨ 활동지에서 활동을 만들고 QR을 발급했어요. 아래 새 카드의 QR을 학생들에게 보여주세요 — 제출되면 AI가 바로 분석을 시작해요.
+        </p>
+      )}
+
+      <QuickQrPanel classes={teacherClasses ?? []} />
 
       {rows.length === 0 ? (
         <EmptyState

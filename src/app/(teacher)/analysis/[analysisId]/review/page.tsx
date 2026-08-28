@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { createClient } from "@/lib/supabase/server";
-import { getStandards } from "@/lib/curriculum/loader";
+import { resolveStandards } from "@/lib/curriculum/resolve";
 import { STORAGE } from "@/lib/config";
 import { AnalysisResultSchema } from "@/features/process/schema";
 import { ReviewPanel } from "@/features/process/ReviewPanel";
@@ -66,7 +66,7 @@ export default async function AnalysisReviewPage({
   );
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
-  const standards = getStandards(standardIds);
+  const standards = await resolveStandards(standardIds);
   const levelOptions =
     standards[0]?.achievement_levels.map((l) => l.level) ?? ["상", "중", "하"];
 

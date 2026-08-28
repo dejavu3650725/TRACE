@@ -3,7 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { analyzeSubmissionWithVlm } from "@/lib/ai/submission-analysis";
 import { getVlmAdapter } from "@/lib/ai/vlm-adapter";
-import { getStandards } from "@/lib/curriculum/loader";
+import { resolveStandards } from "@/lib/curriculum/resolve";
 import { STORAGE } from "@/lib/config";
 import type { StructuredInput } from "@/shared/types/db";
 
@@ -78,7 +78,7 @@ export async function analyzeOneSubmission(
     const standardIds: string[] = (activity.activity_standards ?? []).map(
       (s: { standard_id: string }) => s.standard_id,
     );
-    const standards = getStandards(standardIds);
+    const standards = await resolveStandards(standardIds);
 
     // 3. 원본 Artifact → 짧은 만료 Signed URL → base64 (TRD §23, §30.8)
     // 최신 시도(attempt)의 사진만 사용 — 재제출 시 예전 사진이 섞이지 않게 (TRD §24)
