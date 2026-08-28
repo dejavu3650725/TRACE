@@ -8,9 +8,9 @@ import {
   ClipboardCheck,
   BarChart3,
   Users,
+  ShieldCheck,
 } from "lucide-react";
 import { TraceWordmark } from "./TraceWordmark";
-import { SidebarAccount } from "@/components/auth/SidebarAccount";
 
 /**
  * Sidebar 확정 메뉴 (TRD §32)
@@ -25,8 +25,9 @@ const MAIN_NAV = [
   { href: "/classes", label: "클래스 관리", icon: Users },
 ] as const;
 
-export function Sidebar({ displayName }: { displayName: string }) {
+export function Sidebar() {
   const pathname = usePathname();
+  const adminActive = pathname === "/admin" || pathname.startsWith("/admin/");
 
   return (
     <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-line bg-surface">
@@ -54,7 +55,20 @@ export function Sidebar({ displayName }: { displayName: string }) {
         })}
       </nav>
 
-      <SidebarAccount displayName={displayName} />
+      {/* 관리자 — 학교 단위 운영 관리 콘솔 */}
+      <div className="border-t border-line px-3 py-3">
+        <Link
+          href="/admin"
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200 ${
+            adminActive
+              ? "bg-brand-50 text-brand-700"
+              : "text-muted hover:bg-neutral-bg hover:text-foreground"
+          }`}
+        >
+          <ShieldCheck className="h-[18px] w-[18px]" />
+          관리자
+        </Link>
+      </div>
     </aside>
   );
 }
