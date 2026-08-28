@@ -86,5 +86,18 @@ export async function submitReview(
     p_entity_id: analysisId,
   });
 
-  redirect("/analysis");
+  // ── 자동 다음 이동: 검토 대기 중 가장 오래된 다음 건으로 바로 이동 ──
+  const { data: next } = await supabase
+    .from("analyses")
+    .select("id")
+    .in("status", ["AI_DRAFT", "TEACHER_REVIEW"])
+    .neq("id", analysisId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (next) {
+    redirect(`/analysis/${next.id}/review?prev=${decision}`);
+  }
+  redirect("/analysis?done=1");
 }
