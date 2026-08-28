@@ -1,13 +1,24 @@
+import Image from "next/image";
 import Link from "next/link";
 
-/** TRACE 워드마크 — 로고 컬러(브랜드 블루 + 포인트 도트) */
-export function TraceWordmark({ href = "/dashboard" }: { href?: string }) {
+/** 채택된 TRACE concept01 로고를 사용하는 공용 브랜드 표면. */
+export function TraceWordmark({
+  href = "/dashboard",
+  className = "w-32",
+}: {
+  href?: string;
+  className?: string;
+}) {
   return (
-    <Link href={href} className="inline-flex items-baseline gap-0.5 select-none">
-      <span className="text-xl font-extrabold tracking-[0.18em] text-brand-600">
-        TRACE
-      </span>
-      <span className="h-1.5 w-1.5 translate-y-[-2px] rounded-full bg-brand-dot" />
+    <Link href={href} className="inline-flex shrink-0" aria-label="TRACE 홈">
+      <Image
+        src="/trace-logo-horizontal-v1.png"
+        alt="TRACE"
+        width={2073}
+        height={758}
+        priority
+        className={`h-auto ${className}`}
+      />
     </Link>
   );
 }

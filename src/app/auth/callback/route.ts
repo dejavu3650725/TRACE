@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { recordLoginAudit } from "@/lib/auth/audit";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -19,11 +20,23 @@ export async function GET(request: Request) {
       } = await supabase.auth.getUser();
 
       if (user) {
-        const { data: teacher } = await supabase
+        const { data: teacher, error: teacherError } = await supabase
           .from("teachers")
           .select("id")
           .eq("auth_user_id", user.id)
           .maybeSingle();
+
+        if (teacherError) {
+          return NextResponse.redirect(`${origin}/login?error=auth`);
+        }
+
+        if (teacher) {
+          try {
+            await recordLoginAudit(supabase);
+          } catch {
+            return NextResponse.redirect(`${origin}/login?error=audit`);
+          }
+        }
 
         return NextResponse.redirect(
           `${origin}${teacher ? "/dashboard" : "/onboarding/profile"}`,

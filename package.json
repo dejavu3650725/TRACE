@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test:curriculum": "node --conditions=react-server --experimental-strip-types scripts/check-curriculum.mjs",
+    "test:class-code": "node --experimental-strip-types --test scripts/class-code.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

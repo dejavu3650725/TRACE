@@ -17,13 +17,12 @@ cp .env.example .env   # 값은 팀 채널에서 안전하게 공유 (절대 커
 npm run dev            # http://localhost:3000
 ```
 
-`.env`의 `NEXT_PUBLIC_AUTH_BYPASS=true`면 로그인 없이 교사 화면을 볼 수 있다.
-Google OAuth Provider 설정이 끝나면 `false`로 바꾼다.
+보호된 교사 화면은 개발·배포 환경 모두 유효한 Supabase Session을 요구한다.
 
-## DB 만들기 (최초 1회)
+## 로컬 DB 만들기
 
-Supabase 대시보드 → SQL Editor → `supabase/migrations/0001_init.sql` 전체 붙여넣기 → Run.
-테이블 15개 + RLS 정책 + Private Storage Bucket(`trace`)이 생성된다.
+Docker/OrbStack을 실행한 뒤 `npx supabase start`와 `npx supabase db reset`을 사용한다.
+순서가 보장된 migration으로 테이블, RLS 정책, Private Storage Bucket(`trace`)이 생성된다.
 
 ## 브랜치 규칙 (3인 팀)
 
