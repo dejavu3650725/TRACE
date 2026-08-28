@@ -146,7 +146,7 @@ export const activityReportDemo = {
   student: {
     id: "synthetic-student-01",
     student_number: 1,
-    name: "synthetic-student-01",
+    name: "김하늘",
     is_active: true,
   } satisfies DemoStudent,
   timepoints: [
@@ -154,8 +154,8 @@ export const activityReportDemo = {
       date: "2026-08-18",
       activity: {
         id: "synthetic-activity-fraction-models",
-        title: "Fraction models: first observation",
-        subject: "Mathematics",
+        title: "분수 모형으로 양 나타내기",
+        subject: "수학",
         status: "ACTIVE",
         created_at: "2026-08-18T08:00:00.000Z",
       } satisfies DemoActivity,
@@ -197,7 +197,7 @@ export const activityReportDemo = {
         analysis_json: {
           schema_version: "output-demo-v0.1",
           provisional: true,
-          observation: "The drawing and written fraction both show two shaded parts out of four.",
+          observation: "그림과 분수식에서 4등분한 전체 중 색칠한 2부분을 2/4로 나타냈습니다.",
         },
         status: "APPROVED",
         provider: "synthetic-fixture",
@@ -212,7 +212,7 @@ export const activityReportDemo = {
           analysis_json: {
             schema_version: "output-demo-v0.1",
             provisional: true,
-            observation: "The drawing and written fraction both show two shaded parts out of four.",
+            observation: "그림과 분수식에서 4등분한 전체 중 색칠한 2부분을 2/4로 나타냈습니다.",
           },
           status: "APPROVED",
           provider: "synthetic-fixture",
@@ -226,7 +226,7 @@ export const activityReportDemo = {
           analysis_json: {
             schema_version: "output-demo-v0.1",
             provisional: true,
-            observation: "Rejected candidate: it claims a conclusion beyond the observed work.",
+            observation: "제외 후보: 관찰된 작업을 넘어선 성취 판단이 포함되었습니다.",
           },
           status: "REJECTED",
           provider: "synthetic-fixture",
@@ -240,7 +240,7 @@ export const activityReportDemo = {
         artifact_id: "synthetic-artifact-fraction-page-1",
         question_id: "q-fraction-model-1",
         source_page: 1,
-        claim: "The work sample shows two shaded parts out of four equal parts.",
+        claim: "학생 산출물에서 똑같이 나눈 4부분 중 2부분을 색칠하고 2/4로 기록한 모습이 확인됩니다.",
         created_at: "2026-08-18T09:35:00.000Z",
       } satisfies DemoEvidence,
       review: {
@@ -256,8 +256,8 @@ export const activityReportDemo = {
       date: "2026-08-25",
       activity: {
         id: "synthetic-activity-fraction-equivalence",
-        title: "Fraction equivalence: second observation",
-        subject: "Mathematics",
+        title: "모형으로 동치분수 비교하기",
+        subject: "수학",
         status: "ACTIVE",
         created_at: "2026-08-25T08:00:00.000Z",
       } satisfies DemoActivity,
@@ -299,7 +299,7 @@ export const activityReportDemo = {
         analysis_json: {
           schema_version: "output-demo-v0.1",
           provisional: true,
-          observation: "The work sample connects four eighths and two fourths with the same shaded amount.",
+          observation: "같은 양을 색칠한 두 모형을 4/8과 2/4로 연결해 나타냈습니다.",
         },
         status: "EDITED_APPROVED",
         provider: "synthetic-fixture",
@@ -314,7 +314,7 @@ export const activityReportDemo = {
           analysis_json: {
             schema_version: "output-demo-v0.1",
             provisional: true,
-            observation: "The work sample connects four eighths and two fourths with the same shaded amount.",
+            observation: "같은 양을 색칠한 두 모형을 4/8과 2/4로 연결해 나타냈습니다.",
           },
           status: "EDITED_APPROVED",
           provider: "synthetic-fixture",
@@ -328,7 +328,7 @@ export const activityReportDemo = {
         artifact_id: "synthetic-artifact-fraction-page-2",
         question_id: "q-fraction-equivalence-1",
         source_page: 2,
-        claim: "The work sample records 4/8 and 2/4 as equivalent representations.",
+        claim: "학생 산출물에서 같은 양을 나타낸 두 모형을 4/8 = 2/4로 기록한 모습이 확인됩니다.",
         created_at: "2026-08-25T09:42:00.000Z",
       } satisfies DemoEvidence,
       review: {
@@ -337,11 +337,11 @@ export const activityReportDemo = {
         reviewer_id: "synthetic-teacher-01",
         decision: "EDITED_APPROVED",
         teacher_edits: {
-          feedback_before: "Use an equivalent fraction next time.",
+          feedback_before: "다음에는 크기가 같은 분수를 사용해 보세요.",
           feedback_after:
-            "Compare the two equal shaded areas, then explain why four eighths can be regrouped as two fourths.",
+            "색칠한 두 영역의 크기를 비교하고, 4/8을 2/4로 다시 묶어 나타낼 수 있는 까닭을 설명해 보세요.",
           rationale:
-            "The teacher replaced a generic prompt with a question tied to the student's visible regrouping strategy.",
+            "일반적인 안내를 학생 산출물에서 확인된 다시 묶기 전략과 직접 연결된 질문으로 수정했습니다.",
         },
         reviewed_at: "2026-08-25T09:50:00.000Z",
       } satisfies DemoReview,
@@ -350,7 +350,8 @@ export const activityReportDemo = {
   growthEvent: {
     id: "synthetic-growth-fraction-representation",
     student_id: "synthetic-student-01",
-    description: "Across two observed work samples, the student represented the same quantity with related fractions.",
+    description:
+      "두 차례의 산출물에서 같은 양을 분수 모형과 식으로 나타내고, 2/4와 4/8의 관계를 연결해 표현했습니다.",
     status: "APPROVED",
     created_at: "2026-08-25T10:00:00.000Z",
   } satisfies DemoGrowthEvent,
