@@ -10,10 +10,11 @@ import { AddMaterialModal } from "./AddMaterialModal";
  * [+ 학습자료 추가] — 전역 Primary Action, 우측 정렬, 모든 보호 Route 상시 노출
  */
 export function TopBar({
-  teacherName = "선생님",
+  displayName = "선생님",
   reviewPendingCount = 0,
 }: {
-  teacherName?: string;
+  /** 개인화 표시 이름 — nickname 또는 "{name} 선생님" (shared/displayName.ts 규칙) */
+  displayName?: string;
   reviewPendingCount?: number;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -24,7 +25,7 @@ export function TopBar({
         {/* Greeting 2줄 */}
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-foreground">
-            안녕하세요, {teacherName} 선생님!
+            안녕하세요, {displayName}!
           </p>
           <p className="truncate text-xs text-muted">
             오늘도 학생들의 성장을 함께 만들어요.
@@ -70,9 +71,9 @@ export function TopBar({
           className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm font-semibold text-foreground transition-colors duration-200 hover:bg-neutral-bg"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
-            {teacherName.slice(0, 1)}
+            {displayName.slice(0, 1)}
           </span>
-          <span className="hidden lg:inline">{teacherName} 선생님</span>
+          <span className="hidden lg:inline">{displayName}</span>
           <ChevronDown className="h-4 w-4 text-muted" />
         </button>
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -14,7 +13,7 @@ import {
   CircleHelp,
 } from "lucide-react";
 import { TraceWordmark } from "./TraceWordmark";
-import { LegalModal, type LegalModalType } from "./LegalModal";
+import { SidebarAccount } from "@/components/auth/SidebarAccount";
 
 /**
  * Sidebar 확정 메뉴 (TRD §32)
@@ -36,7 +35,6 @@ const SUB_NAV = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [legalModal, setLegalModal] = useState<LegalModalType>(null);
 
   return (
     <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-line bg-surface">
@@ -100,18 +98,8 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* 개인정보처리방침 — 하단 고정, LegalModal */}
-      <div className="border-t border-line px-6 py-4">
-        <button
-          type="button"
-          onClick={() => setLegalModal("privacy")}
-          className="text-xs font-medium text-muted transition-colors duration-200 hover:text-foreground"
-        >
-          개인정보처리방침
-        </button>
-      </div>
-
-      <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
+      {/* 계정 영역 — 비로그인: Google 로그인 모달 / 로그인: 이름 + 로그아웃 */}
+      <SidebarAccount />
     </aside>
   );
 }

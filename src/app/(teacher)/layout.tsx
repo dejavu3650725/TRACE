@@ -1,19 +1,23 @@
 import { redirect } from "next/navigation";
 import { TeacherAppShell } from "@/components/shell/TeacherAppShell";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionTeacher } from "@/lib/auth/teacher";
+import { getTeacherDisplayName } from "@/shared/displayName";
 
 /**
  * 보호된 Teacher Layout (TRD §52 Merge Gate)
- * - Supabase 세션이 없으면 /login으로 보낸다 (TRD §30.1).
- * - 초기 개발 편의: NEXT_PUBLIC_AUTH_BYPASS=true면 세션 검사를 건너뛴다.
- *   Google OAuth Provider 설정이 끝나면 반드시 false로 바꾼다.
+ * 진입 규칙:
+ *   로그인 안 됨 → /login
+ *   로그인됨 + Teacher Profile 없음 → /onboarding/profile
+ *   로그인됨 + Profile 있음 → 통과 (개인화 이름 표시)
+ * 초기 개발 편의: NEXT_PUBLIC_AUTH_BYPASS=true면 세션 검사를 건너뛴다.
+ * Google OAuth Provider 설정이 끝나면 반드시 false로 바꾼다.
  */
 export default async function TeacherLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  let teacherName = "선생님";
+  let displayName = "선생님";
 
   const bypass = process.env.NEXT_PUBLIC_AUTH_BYPASS === "true";
   const hasSupabaseEnv = Boolean(
@@ -22,17 +26,11 @@ export default async function TeacherLayout({
   );
 
   if (!bypass && hasSupabaseEnv) {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) redirect("/login");
-    teacherName =
-      (user.user_metadata?.full_name as string | undefined) ??
-      (user.user_metadata?.name as string | undefined) ??
-      user.email ??
-      "선생님";
+    const { userId, teacher } = await getSessionTeacher();
+    if (!userId) redirect("/login");
+    if (!teacher) redirect("/onboarding/profile");
+    displayName = getTeacherDisplayName(teacher);
   }
 
-  return <TeacherAppShell teacherName={teacherName}>{children}</TeacherAppShell>;
+  return <TeacherAppShell displayName={displayName}>{children}</TeacherAppShell>;
 }

@@ -39,6 +39,7 @@ create table teachers (
   id uuid primary key default gen_random_uuid(),
   auth_user_id uuid unique not null references auth.users (id) on delete cascade,
   name text not null,
+  nickname text,
   email text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

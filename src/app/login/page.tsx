@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Footer } from "@/components/shell/Footer";
 import { TraceWordmark } from "@/components/shell/TraceWordmark";
-import { GoogleLoginButton } from "./GoogleLoginButton";
+import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 
 export const metadata: Metadata = { title: "로그인" };
 
