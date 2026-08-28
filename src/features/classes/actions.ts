@@ -127,3 +127,41 @@ export async function reissueClassCode(formData: FormData) {
 
   throw new Error("Could not issue a unique Class Code after bounded retries");
 }
+
+/* ─── 인라인 피드백형 학급 정보 저장 (버튼 상태 UX용) ─── */
+
+export interface ClassFormState {
+  status: "idle" | "success" | "error";
+  message: string | null;
+  savedAt: number | null;
+}
+
+export async function updateClassInfo(
+  _prev: ClassFormState,
+  formData: FormData,
+): Promise<ClassFormState> {
+  const input = parseClassInput(formData);
+  const classId = String(formData.get("classId") ?? "");
+  const parsed = classUpdateSchema.safeParse(input ? { ...input, classId } : null);
+  if (!parsed.success) {
+    return { status: "error", message: "입력 값을 확인해 주세요.", savedAt: null };
+  }
+
+  await requireTeacherOwnership("class", parsed.data.classId);
+  const { teacher, supabase } = await requireSessionTeacher();
+  const { data, error } = await supabase
+    .from("classes")
+    .update({ name: parsed.data.name, grade: parsed.data.grade, subject: parsed.data.subject })
+    .eq("id", parsed.data.classId)
+    .eq("teacher_id", teacher.id)
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    return { status: "error", message: "저장에 실패했어요. 잠시 후 다시 시도해 주세요.", savedAt: null };
+  }
+
+  revalidatePath("/classes");
+  revalidatePath(`/classes/${parsed.data.classId}`);
+  return { status: "success", message: "학급 정보를 저장했어요.", savedAt: Date.now() };
+}
