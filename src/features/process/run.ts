@@ -139,6 +139,8 @@ export async function analyzeOneSubmission(
 
     return { status: "completed", analysisId: analysis.id };
   } catch (e) {
+    // 원인 추적을 위해 서버 로그에 남긴다 (학생 PII 없음 — submission id만)
+    console.error(`[PROCESS] 분석 실패 submission=${submissionId}:`, e);
     await supabase
       .from("submissions")
       .update({ process_status: "FAILED" })

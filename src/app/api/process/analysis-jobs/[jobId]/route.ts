@@ -30,7 +30,9 @@ export async function GET(
   const supabase = await createClient();
   const { data: job } = await supabase
     .from("processing_jobs")
-    .select("id, status, total_count, completed_count, failed_count, current_step, created_at")
+    .select(
+      "id, status, total_count, completed_count, failed_count, current_step, error_message, created_at",
+    )
     .eq("id", jobId)
     .maybeSingle();
 

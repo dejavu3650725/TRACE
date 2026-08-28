@@ -12,6 +12,7 @@ interface JobState {
   completed_count: number;
   failed_count: number;
   current_step: string | null;
+  error_message: string | null;
 }
 
 /** processing_jobs 폴링 (2초 간격, 완료 시 중단) — TRD §28 */
@@ -80,8 +81,13 @@ export function JobProgress({ jobId }: { jobId: string }) {
               <>
                 {" "}
                 · 실패 <b className="text-danger">{job.failed_count}</b>건
+                {job.error_message && (
+                  <span className="mt-1 block break-all rounded-lg bg-danger-bg px-3 py-2 text-left text-xs text-danger">
+                    최근 오류: {job.error_message}
+                  </span>
+                )}
                 <span className="block text-xs text-muted">
-                  실패한 자료는 학습관리에서 상태를 확인한 뒤 다시 실행할 수 있어요.
+                  실패한 자료는 다시 선택해 재실행할 수 있어요.
                 </span>
               </>
             )}

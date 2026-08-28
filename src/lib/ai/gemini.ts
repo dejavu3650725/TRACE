@@ -90,9 +90,13 @@ interface GeminiPart {
 
 async function callGemini(parts: GeminiPart[]): Promise<string> {
   const model = getGeminiModel();
-  const res = await fetch(`${GEMINI_ENDPOINT}/${model}:generateContent?key=${getGeminiApiKey()}`, {
+  // API Key는 URL이 아니라 헤더로 전달한다 (신형 키 형식 호환 + URL 로그 노출 방지)
+  const res = await fetch(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": getGeminiApiKey(),
+    },
     body: JSON.stringify({
       contents: [{ role: "user", parts }],
       generationConfig: {

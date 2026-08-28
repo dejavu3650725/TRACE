@@ -90,12 +90,14 @@ export async function POST(request: Request) {
   // 순차 분석 — 부분 실패 허용
   let completed = 0;
   let failed = 0;
+  let lastError: string | null = null;
   for (const submissionId of submissionIds) {
     try {
       await analyzeOneSubmission(supabase, submissionId);
       completed += 1;
-    } catch {
+    } catch (e) {
       failed += 1;
+      lastError = e instanceof Error ? e.message.slice(0, 500) : "알 수 없는 오류";
     }
     await supabase
       .from("processing_jobs")
@@ -112,6 +114,7 @@ export async function POST(request: Request) {
     .update({
       status: failed === submissionIds.length ? "FAILED" : "COMPLETED",
       current_step: null,
+      error_message: lastError,
     })
     .eq("id", job.id);
 
