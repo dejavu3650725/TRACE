@@ -1106,6 +1106,9 @@ target_student_ids
 Google로 계속하기
 → Google OAuth
 → Supabase Auth User 생성
+→ Teacher Profile 기본정보 설정
+   - name 필수
+   - nickname 선택
 → TRACE Teacher Profile 생성
 → 최초 설정(Onboarding)
    1. Class 생성
@@ -1126,6 +1129,8 @@ Google로 계속하기
 - **기존 사용자의 Google 인증은 로그인으로 처리한다.**
 - 별도 이메일/비밀번호 회원가입은 MVP에서 제공하지 않는다.
 - Google OAuth 성공 후 Supabase Auth의 `auth.users.id`를 기준으로 TRACE `teachers.auth_user_id`와 연결한다.
+- Teacher Profile은 `name`을 필수로 저장하고 화면 개인화를 위한 `nickname`을 선택적으로 저장할 수 있다.
+- 신규 사용자는 OAuth callback 후 Teacher Profile이 없으면 `/onboarding/profile`에서 기본정보를 설정한다.
 - 최초 로그인 시 대응되는 Teacher Profile이 없으면 생성한다.
 - 기존 Teacher Profile이 있으면 새로 만들지 않고 기존 Profile과 데이터를 재사용한다.
 - Google Access Token 자체를 TRACE 내부 식별키로 사용하지 않는다.
@@ -1138,7 +1143,7 @@ Google로 계속하기
 최초 Teacher Profile 생성 직후에는 다음 순서로 초기 설정을 안내한다.
 
 ```text
-Teacher Profile 생성
+Teacher Profile 기본정보 설정 및 생성
 → Class 생성
 → Student Roster 등록
 → Activity 생성/배정 가능

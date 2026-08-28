@@ -423,6 +423,8 @@ StudentAlias라는 별도 Domain Entity 사용
 Google로 계속하기
 → Google OAuth
 → Supabase Auth User 생성
+→ /onboarding/profile
+→ Teacher Profile 기본정보 설정(name 필수, nickname 선택)
 → Teacher Profile 생성
 → Class 생성
 → Student Roster 등록
@@ -774,6 +776,7 @@ Previous Approved Evidence
 id uuid PK
 auth_user_id uuid UNIQUE NOT NULL
 name text NOT NULL
+nickname text nullable
 email text nullable
 created_at timestamptz
 updated_at timestamptz
@@ -2344,6 +2347,7 @@ Class Selector는 `classes`를 사용한다.
 ## Onboarding
 
 ```text
+/onboarding/profile
 /onboarding/class
 /onboarding/roster
 ```

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/shell/PageHeader";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "학급 만들기" };
 
@@ -10,13 +9,6 @@ export const metadata: Metadata = { title: "학급 만들기" };
  * Owner: Shared + INPUT
  */
 export default function OnboardingClassPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="학급 만들기" description="TRACE를 시작하려면 먼저 학급을 만들어요. (1/2)" />
-      <EmptyState
-        title="학급 생성 폼 준비 중"
-        description="학년, 학급명, 교과(선택)를 입력해 학급을 만들어요."
-      />
-    </div>
-  );
+  // Class 생성 폼은 /classes에 한 번만 둔다. 온보딩 진입도 같은 실제 CRUD를 사용한다.
+  redirect("/classes");
 }

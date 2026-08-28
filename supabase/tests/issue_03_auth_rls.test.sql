@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(32);
+select plan(33);
 
 -- Synthetic Auth users and owned resource graphs for Teacher A/B.
 insert into auth.users (id, email) values
@@ -59,6 +59,19 @@ select is((select count(*) from teachers), 1::bigint, 'Teacher A sees only own p
 select is((select count(*) from teachers where id = '00000000-0000-4000-8000-000000000312'), 0::bigint, 'Teacher B profile is hidden');
 select is((select count(*) from classes where id = '00000000-0000-4000-8000-000000000321'), 1::bigint, 'own Class is visible');
 select is((select count(*) from classes where id = '00000000-0000-4000-8000-000000000323'), 0::bigint, 'foreign Class is hidden');
+select is(
+  (
+    with attempted_update as (
+      update classes
+      set name = 'Forbidden Class Rewrite'
+      where id = '00000000-0000-4000-8000-000000000323'
+      returning id
+    )
+    select count(*) from attempted_update
+  ),
+  0::bigint,
+  'foreign Class cannot be updated'
+);
 select is((select count(*) from students where id = '00000000-0000-4000-8000-000000000331'), 1::bigint, 'own Student is visible');
 select is((select count(*) from students where id = '00000000-0000-4000-8000-000000000333'), 0::bigint, 'foreign Student is hidden');
 select is((select count(*) from activities where id = '00000000-0000-4000-8000-000000000341'), 1::bigint, 'own Activity is visible');

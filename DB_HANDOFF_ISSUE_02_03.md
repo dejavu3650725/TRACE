@@ -98,7 +98,7 @@ npx supabase db lint --local --level warning
 
 ```text
 0001 → 0002 → 0003 → 0004 clean 적용 성공
-pgTAP Files=2, Tests=61, Result: PASS
+pgTAP Files=2, Tests=62, Result: PASS
 DB lint: No schema errors found
 ```
 
