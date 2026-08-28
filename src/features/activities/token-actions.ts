@@ -29,10 +29,15 @@ async function loadOwnedAssignment(assignmentId: string) {
 export async function issueSubmissionToken(formData: FormData) {
   const assignmentId = String(formData.get("assignmentId") ?? "");
   const activityId = String(formData.get("activityId") ?? "");
+  // QR 공유 패널(/results/share)에서 호출되면 그 화면으로 되돌아간다 (내부 고정 경로만 허용)
+  const backToShare = String(formData.get("returnTo") ?? "") === "share";
+  const back = (suffix: string) =>
+    backToShare ? "/results/share" : `/activities/${activityId}/assign${suffix}`;
+
   const { supabase, assignment } = await loadOwnedAssignment(assignmentId);
-  if (!assignment) redirect(`/activities/${activityId}/assign?assignment-error=save-failed`);
+  if (!assignment) redirect(back("?assignment-error=save-failed"));
   if (assignment.status !== "OPEN") {
-    redirect(`/activities/${activityId}/assign?assignment-error=token-closed`);
+    redirect(back("?assignment-error=token-closed"));
   }
 
   const token = randomBytes(18).toString("base64url");
@@ -40,8 +45,8 @@ export async function issueSubmissionToken(formData: FormData) {
     .from("activity_assignments")
     .update({ submission_token: token })
     .eq("id", assignmentId);
-  if (error) redirect(`/activities/${activityId}/assign?assignment-error=save-failed`);
-  redirect(`/activities/${activityId}/assign?token=issued`);
+  if (error) redirect(back("?assignment-error=save-failed"));
+  redirect(back("?token=issued"));
 }
 
 export async function revokeSubmissionToken(formData: FormData) {

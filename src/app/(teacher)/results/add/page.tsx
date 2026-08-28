@@ -17,11 +17,10 @@ const PATHS = [
     desc: "모아둔 파일을 한 번에 올리거나 카메라로 연속 촬영해요.",
   },
   {
-    href: "/results/add",
+    href: "/results/share",
     icon: QrCode,
     title: "학생 직접 제출",
     desc: "QR·짧은 링크로 학생이 자기 기기에서 촬영해 제출해요.",
-    todo: "TODO(INPUT): QRSharePanel 연결",
   },
   {
     href: "/results/import",
