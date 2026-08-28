@@ -1,0 +1,18 @@
+{
+  "schema_version": "1",
+  "source_root": "Curriculum JSON",
+  "datasets": [
+    {
+      "kind": "standards",
+      "file_name_suffix": "성취기준.json"
+    },
+    {
+      "kind": "achievement_levels",
+      "file_name_suffix": ".json",
+      "path_contains_any": [
+        "성취수준 JSON",
+        "성취후준 JSON"
+      ]
+    }
+  ]
+}

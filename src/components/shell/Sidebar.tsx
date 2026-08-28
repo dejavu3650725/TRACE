@@ -33,7 +33,7 @@ const SUB_NAV = [
   { href: "/help", label: "도움말", icon: CircleHelp, disabled: true },
 ] as const;
 
-export function Sidebar() {
+export function Sidebar({ displayName }: { displayName: string }) {
   const pathname = usePathname();
 
   return (
@@ -98,8 +98,7 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* 계정 영역 — 비로그인: Google 로그인 모달 / 로그인: 이름 + 로그아웃 */}
-      <SidebarAccount />
+      <SidebarAccount displayName={displayName} />
     </aside>
   );
 }

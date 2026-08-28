@@ -10,7 +10,7 @@ export interface ProfileFormState {
 const MAX_LEN = 30;
 
 /**
- * 최초 로그인 Teacher Profile 생성 (Server Action)
+ * 최초 로그인 Teacher Profile 생성 + LOGIN audit (Server Action)
  * - auth_user_id는 서버 세션에서만 가져온다.
  * - 동일 auth_user_id에 Profile이 이미 있으면 만들지 않고 재사용한다 (중복 생성 방지).
  */
@@ -31,24 +31,13 @@ export async function createTeacherProfile(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // 이미 있으면 새로 만들지 않는다 (중복 클릭 / callback 재호출 대비)
-  const { data: existing } = await supabase
-    .from("teachers")
-    .select("id")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
+  const { error } = await supabase.rpc("complete_teacher_profile_and_login", {
+    p_name: name,
+    p_nickname: nickname || null,
+  });
 
-  if (!existing) {
-    const { error } = await supabase.from("teachers").insert({
-      auth_user_id: user.id,
-      name,
-      nickname: nickname || null,
-      email: user.email ?? null,
-    });
-    // unique(auth_user_id) 충돌은 동시 요청으로 이미 생성된 경우 → 통과
-    if (error && error.code !== "23505") {
-      return { error: "저장에 실패했어요. 잠시 후 다시 시도해 주세요." };
-    }
+  if (error) {
+    return { error: "저장에 실패했어요. 잠시 후 다시 시도해 주세요." };
   }
 
   redirect("/dashboard");
