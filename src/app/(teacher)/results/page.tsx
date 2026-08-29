@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronDown, Clock3, Eye, FileText, FolderOpen, Search, Upload } from "lucide-react";
+import { ChevronDown, Clock3, Eye, FileText, FolderOpen, Search, Upload, QrCode } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -143,7 +143,7 @@ export default async function ResultsPage({
       <PageHeader
         title="학습관리"
         description="활동별로 학생 제출 현황을 확인하고, 같은 학생의 누적 활동을 이어서 관리해요."
-        actions={<Link href="/results/upload" className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-700"><Upload className="h-4 w-4" /> 활동자료 업로드</Link>}
+        actions={<div className="flex items-center gap-2"><Link href="/results/share" className="inline-flex items-center gap-2 rounded-lg border border-brand-200 px-4 py-2.5 text-sm font-bold text-brand-700 hover:bg-brand-50"><QrCode className="h-4 w-4" /> 학생 제출 QR</Link><Link href="/results/add" className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-700"><Upload className="h-4 w-4" /> 자료 추가</Link></div>}
       />
 
       <TabNav
@@ -219,7 +219,7 @@ export default async function ResultsPage({
             })}
           </section>
       ) : (
-        <EmptyState icon={<FolderOpen className="h-6 w-6" />} title="검색 결과가 없어요" description="다른 교과나 활동 키워드로 검색해 보세요." ctaLabel="활동자료 업로드" ctaHref="/results/upload" />
+        <EmptyState icon={<FolderOpen className="h-6 w-6" />} title="검색 결과가 없어요" description="다른 교과나 활동 키워드로 검색해 보세요." ctaLabel="자료 추가" ctaHref="/results/add" />
       )}
     </div>
   );
