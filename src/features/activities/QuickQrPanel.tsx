@@ -17,12 +17,23 @@ export function QuickQrPanel({
 }) {
   const [state, formAction, pending] = useActionState(createQrFromWorksheet, initialState);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   if (classes.length === 0) return null;
 
   return (
     <form
       action={formAction}
+      onSubmit={(e) => {
+        // hidden+required 파일 입력은 브라우저가 제출을 '조용히' 막는다 — 직접 검사해 안내한다.
+        const photo = e.currentTarget.elements.namedItem("photo") as HTMLInputElement | null;
+        if (!photo?.files?.length) {
+          e.preventDefault();
+          setLocalError("활동지 사진이나 PDF 파일을 먼저 선택해 주세요.");
+          return;
+        }
+        setLocalError(null);
+      }}
       className="rounded-2xl border border-brand-200 bg-gradient-to-b from-brand-50/70 to-surface p-5 shadow-[var(--shadow-card)]"
     >
       <p className="flex items-center gap-1.5 text-sm font-bold text-brand-700">
@@ -53,9 +64,11 @@ export function QuickQrPanel({
             type="file"
             name="photo"
             accept="image/*,.pdf,application/pdf"
-            required
             hidden
-            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+            onChange={(e) => {
+              setFileName(e.target.files?.[0]?.name ?? null);
+              if (e.target.files?.length) setLocalError(null);
+            }}
           />
         </label>
 
@@ -74,9 +87,9 @@ export function QuickQrPanel({
         </button>
       </div>
 
-      {state.status === "error" && state.message && (
+      {(localError || (state.status === "error" && state.message)) && (
         <p className="mt-3 rounded-xl border border-danger/20 bg-danger-bg px-4 py-2.5 text-sm text-danger">
-          {state.message}
+          {localError ?? state.message}
         </p>
       )}
     </form>
