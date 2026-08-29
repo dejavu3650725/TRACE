@@ -3,7 +3,6 @@ import test from "node:test";
 import { createGoogleGeminiAdapter } from "../src/lib/ai/google-gemini-adapter.ts";
 import {
   buildActivityDraftPrivacyContext,
-  buildMaterialClassificationPrivacyContext,
   buildSubmissionAnalysisPrivacyContext,
   createPrivacySafeVlmRequest,
   PrivacyContextViolationError,
@@ -69,19 +68,6 @@ test("activity Privacy Context keeps only allowlisted fields", () => {
   ]) {
     assert.equal(serialized.includes(prohibited), false, `${prohibited} must be excluded`);
   }
-});
-
-test("material classification Context excludes roster and identity fields", () => {
-  const context = buildMaterialClassificationPrivacyContext({
-    classContext: { grade: 3, className: "합성반" },
-    pdf: { mimeType: "application/pdf", base64: "aGVsbG8=" },
-    roster: [{ studentName: "합성학생" }],
-    teacherEmail: "teacher@example.test",
-  });
-  assert.deepEqual(context, {
-    classContext: { grade: 3 },
-    pdf: { mimeType: "application/pdf", base64: "aGVsbG8=" },
-  });
 });
 
 test("analysis Privacy Context excludes identity objects without reading roster data", () => {

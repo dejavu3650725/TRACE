@@ -6,7 +6,6 @@ import { getVlmAdapter } from "@/lib/ai/vlm-adapter";
 import { resolveStandards } from "@/lib/curriculum/resolve";
 import { STORAGE } from "@/lib/config";
 import type { StructuredInput } from "@/shared/types/db";
-import type { ProcessArtifactReference } from "./handoff-contract";
 
 /**
  * Submission 1건을 분석해서 analyses + evidence에 AI_DRAFT로 저장한다.
@@ -17,7 +16,6 @@ import type { ProcessArtifactReference } from "./handoff-contract";
 export async function analyzeOneSubmission(
   supabase: SupabaseClient,
   submissionId: string,
-  resolvedArtifacts?: readonly ProcessArtifactReference[],
 ): Promise<{ status: "completed" | "skipped"; analysisId: string }> {
   // 1. Submission + 관계 조회 (RLS로 본인 범위 강제)
   const { data: submission, error: subError } = await supabase
@@ -55,19 +53,11 @@ export async function analyzeOneSubmission(
     (!submission.submitted_at ||
       new Date(latest.created_at).getTime() >= new Date(submission.submitted_at).getTime());
   if (latestIsPending && analysisIsFresh) {
-    // 근거까지 갖춘 신선한 초안만 재사용한다. 근거가 빈 불완전 초안은 FAILED 처리 후 재분석 (input)
-    const { count: evidenceCount } = await supabase
-      .from("evidence")
-      .select("id", { count: "exact", head: true })
-      .eq("analysis_id", latest.id);
-    if ((evidenceCount ?? 0) > 0) {
-      await supabase
-        .from("submissions")
-        .update({ process_status: "REVIEW_REQUIRED" })
-        .eq("id", submissionId);
-      return { status: "skipped", analysisId: latest.id };
-    }
-    await supabase.from("analyses").update({ status: "FAILED" }).eq("id", latest.id);
+    await supabase
+      .from("submissions")
+      .update({ process_status: "REVIEW_REQUIRED" })
+      .eq("id", submissionId);
+    return { status: "skipped", analysisId: latest.id };
   }
 
   await supabase
@@ -91,38 +81,27 @@ export async function analyzeOneSubmission(
     const standards = await resolveStandards(standardIds);
 
     // 3. 원본 Artifact → 짧은 만료 Signed URL → base64 (TRD §23, §30.8)
-    // input의 artifactReferences 구조 유지 + 최신 시도(attempt)의 사진만 사용 (재제출 격리, TRD §24)
-    let artifactReferences = resolvedArtifacts ? [...resolvedArtifacts] : [];
-    if (!resolvedArtifacts) {
-      const { data: artifacts } = await supabase
-        .from("artifacts")
-        .select("id, storage_path, mime_type, artifact_role, page_start, page_end, attempt_no")
-        .eq("submission_id", submissionId)
-        .eq("artifact_role", "ORIGINAL")
-        .eq("attempt_no", submission.current_attempt_no ?? 1)
-        .order("created_at", { ascending: true })
-        .limit(4);
-      artifactReferences = (artifacts ?? []).map((artifact) => ({
-        artifactId: artifact.id,
-        originalArtifactId: artifact.id,
-        storagePath: artifact.storage_path,
-        mimeType: artifact.mime_type,
-        pageStart: artifact.page_start,
-        pageEnd: artifact.page_end,
-      }));
-    }
+    // 최신 시도(attempt)의 사진만 사용 — 재제출 시 예전 사진이 섞이지 않게 (TRD §24)
+    const { data: artifacts } = await supabase
+      .from("artifacts")
+      .select("id, storage_path, mime_type, artifact_role, page_start, attempt_no")
+      .eq("submission_id", submissionId)
+      .eq("artifact_role", "ORIGINAL")
+      .eq("attempt_no", submission.current_attempt_no ?? 1)
+      .order("created_at", { ascending: true })
+      .limit(4);
 
     const images: Array<{ mimeType: string; base64: string }> = [];
-    for (const artifact of artifactReferences) {
-      if (!artifact.mimeType.startsWith("image/")) continue;
+    for (const artifact of artifacts ?? []) {
+      if (!artifact.mime_type.startsWith("image/")) continue;
       const { data: signed } = await supabase.storage
         .from(STORAGE.BUCKET)
-        .createSignedUrl(artifact.storagePath, 300);
+        .createSignedUrl(artifact.storage_path, 300);
       if (!signed?.signedUrl) continue;
       const res = await fetch(signed.signedUrl);
       if (!res.ok) continue;
       const buf = Buffer.from(await res.arrayBuffer());
-      images.push({ mimeType: artifact.mimeType, base64: buf.toString("base64") });
+      images.push({ mimeType: artifact.mime_type, base64: buf.toString("base64") });
     }
 
     // 4. AI 분석
@@ -151,6 +130,7 @@ export async function analyzeOneSubmission(
     if (insertError || !analysis) throw new Error("분석 결과 저장에 실패했습니다.");
 
     // 재제출로 만들어진 새 버전이 확정판이므로, 이전의 미검토 초안은 자동 대체(REJECTED) 처리
+    // → 검토 대기 목록에 같은 학생이 중복으로 쌓이지 않는다
     await supabase
       .from("analyses")
       .update({ status: "REJECTED" })
@@ -158,8 +138,7 @@ export async function analyzeOneSubmission(
       .in("status", ["AI_DRAFT", "TEACHER_REVIEW"])
       .neq("id", analysis.id);
 
-    // Batch 제출은 Submission-owned DERIVED 범위를 Evidence에 연결한다 (input)
-    const firstArtifactId = artifactReferences[0]?.artifactId ?? null;
+    const firstArtifactId = artifacts?.[0]?.id ?? null;
     const evidenceRows = result.evidence.map((e) => ({
       analysis_id: analysis.id,
       standard_id: standards[0]?.standard_id ?? null,
@@ -180,33 +159,8 @@ export async function analyzeOneSubmission(
 
     return { status: "completed", analysisId: analysis.id };
   } catch (e) {
-    // 중복 실행 중 다른 요청이 먼저 완전한 초안+Evidence를 저장했다면
-    // 늦게 실패한 요청이 정상 상태를 FAILED로 덮지 않는다.
-    const { data: recoverable } = await supabase
-      .from("analyses")
-      .select("id")
-      .eq("submission_id", submissionId)
-      .in("status", ["AI_DRAFT", "TEACHER_REVIEW"])
-      .order("version_no", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (recoverable) {
-      const { count: evidenceCount } = await supabase
-        .from("evidence")
-        .select("id", { count: "exact", head: true })
-        .eq("analysis_id", recoverable.id);
-      if ((evidenceCount ?? 0) > 0) {
-        await supabase
-          .from("submissions")
-          .update({ process_status: "REVIEW_REQUIRED" })
-          .eq("id", submissionId);
-        return { status: "skipped", analysisId: recoverable.id };
-      }
-    }
-
     // 원인 추적을 위해 서버 로그에 남긴다 (학생 PII 없음 — submission id만)
-    const errorCode = e && typeof e === "object" && "code" in e ? String(e.code) : null;
-    console.error(`[PROCESS] 분석 실패 submission=${submissionId} code=${errorCode ?? "UNKNOWN"}`);
+    console.error(`[PROCESS] 분석 실패 submission=${submissionId}:`, e);
     await supabase
       .from("submissions")
       .update({ process_status: "FAILED" })

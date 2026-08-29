@@ -3,64 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useActionState } from "react";
 import Image from "next/image";
-import { Columns2, ExternalLink, FileText, Pencil, ThumbsDown, ThumbsUp, X } from "lucide-react";
+import { Pencil, ThumbsDown, ThumbsUp, FileText } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { AnalysisResult } from "@/features/process/schema";
 import type { StructuredInput } from "@/shared/types/db";
 import { submitReview, type ReviewActionState } from "@/app/(teacher)/analysis/[analysisId]/review/actions";
 
 const initialState: ReviewActionState = { error: null };
-
-export type ReviewOriginalFile = {
-  artifactId: string;
-  originalArtifactId: string;
-  fileName: string;
-  mimeType: string;
-  pageStart: number | null;
-  pageEnd: number | null;
-  signedUrl: string;
-};
-
-function filePageLabel(file: ReviewOriginalFile): string {
-  if (file.pageStart === null) return "전체 원본";
-  if (file.pageEnd === null || file.pageStart === file.pageEnd) return `${file.pageStart}쪽`;
-  return `${file.pageStart}~${file.pageEnd}쪽`;
-}
-
-function OriginalFilePreview({ file }: { file: ReviewOriginalFile }) {
-  const pageUrl = file.mimeType === "application/pdf" && file.pageStart
-    ? `${file.signedUrl}#page=${file.pageStart}&view=FitH`
-    : file.signedUrl;
-
-  if (file.mimeType === "application/pdf") {
-    return (
-      <iframe
-        src={pageUrl}
-        title={`${file.fileName} ${filePageLabel(file)} 원본`}
-        className="h-[70vh] min-h-[620px] w-full bg-white"
-      />
-    );
-  }
-  if (file.mimeType.startsWith("image/")) {
-    return (
-      <Image
-        src={file.signedUrl}
-        alt={`${file.fileName} 원본`}
-        width={1000}
-        height={1400}
-        unoptimized
-        className="h-auto w-full"
-      />
-    );
-  }
-  return (
-    <div className="flex min-h-72 items-center justify-center p-6">
-      <a href={file.signedUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-bold text-white hover:bg-brand-700">
-        <ExternalLink className="h-4 w-4" /> 원본 파일 열기
-      </a>
-    </div>
-  );
-}
 
 /**
  * 검토 화면 본체 (TRD §45)
@@ -74,7 +23,7 @@ export function ReviewPanel({
   initial,
   levelOptions,
   standards,
-  originalFiles,
+  imageUrls,
   structuredInput,
 }: {
   analysisId: string;
@@ -82,11 +31,10 @@ export function ReviewPanel({
   initial: AnalysisResult;
   levelOptions: string[];
   standards: Array<{ id: string; text: string }>;
-  originalFiles: ReviewOriginalFile[];
+  imageUrls: string[];
   structuredInput: StructuredInput | null;
 }) {
   const [editing, setEditing] = useState(false);
-  const [comparing, setComparing] = useState(false);
   const [level, setLevel] = useState(initial.achievement_level);
   const [strengths, setStrengths] = useState(initial.strengths.join("\n"));
   const [difficulties, setDifficulties] = useState(
@@ -155,66 +103,32 @@ export function ReviewPanel({
     "w-full rounded-xl border border-line bg-background px-3 py-2 text-sm outline-none transition-colors duration-200 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:border-transparent disabled:bg-transparent disabled:px-0 disabled:resize-none";
 
   return (
-    <div className="space-y-6">
-      {originalFiles.length > 0 ? (
-        <button type="button" onClick={() => setComparing((current) => !current)} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-700">
-          {comparing ? <X className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
-          {comparing ? "대조 화면 닫기" : "원본과 대조하기"}
-        </button>
-      ) : null}
-
-      {comparing && originalFiles.length > 0 ? (
-        <section className="grid overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-card-hover)] lg:grid-cols-2">
-          <div className="min-w-0 border-b border-line lg:border-b-0 lg:border-r">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
-              <div>
-                <h2 className="font-bold text-foreground">원본파일</h2>
-                <p className="text-xs text-muted">{filePageLabel(originalFiles[0])}</p>
-              </div>
-              <a href={originalFiles[0].signedUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-700 hover:underline">
-                새 창 <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            </div>
-            <div className="max-h-[78vh] overflow-auto">
-              {originalFiles.map((file) => <OriginalFilePreview key={file.artifactId} file={file} />)}
-            </div>
-          </div>
-
-          <div className="min-w-0 bg-background/60">
-            <div className="border-b border-line px-4 py-3">
-              <h2 className="font-bold text-foreground">Evidence와 판정 근거</h2>
-              <p className="text-xs text-muted">원본의 학생 표시와 AI 근거 문장을 한눈에 대조합니다.</p>
-            </div>
-            <div className="max-h-[78vh] space-y-4 overflow-auto p-4">
-              {initial.evidence.map((evidence, index) => (
-                <article key={`${evidence.question_id ?? "evidence"}-${index}`} className="rounded-xl border border-brand-200 bg-surface p-4 shadow-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-brand-700">Evidence {index + 1}</span>
-                    <span className="text-xs text-muted">{evidence.question_id ?? "문항 미지정"}{evidence.source_page ? ` · 원본 ${evidence.source_page}쪽` : ""}</span>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-foreground">{evidence.claim}</p>
-                </article>
-              ))}
-              <article className="rounded-xl border border-line bg-surface p-4">
-                <p className="text-xs font-bold text-muted">성취수준</p>
-                <p className="mt-2 text-lg font-extrabold text-foreground">{level}</p>
-              </article>
-              <article className="rounded-xl border border-line bg-surface p-4">
-                <p className="text-xs font-bold text-muted">강점</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{strengths}</p>
-              </article>
-              <article className="rounded-xl border border-line bg-surface p-4">
-                <p className="text-xs font-bold text-muted">어려운 점</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{difficulties}</p>
-              </article>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* 좌: 원본 */}
       <section className="space-y-3">
+        <h2 className="text-sm font-bold text-muted">원본 자료</h2>
+        {imageUrls.length > 0 ? (
+          <div className="space-y-3">
+            {imageUrls.map((url, i) => (
+              <div key={i} className="overflow-hidden rounded-2xl border border-line bg-surface">
+                {/* Signed URL은 만료되므로 최적화 프록시 없이 직접 표시 */}
+                <Image
+                  src={url}
+                  alt={`원본 ${i + 1}페이지`}
+                  width={800}
+                  height={1100}
+                  unoptimized
+                  className="h-auto w-full"
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-line bg-surface p-6 text-center text-sm text-muted">
+            이미지 원본이 없는 제출물이에요. 아래 구조화된 응답을 원본 근거로 확인하세요.
+          </div>
+        )}
+
         {structuredInput && (
           <div className="rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-card)]">
             <p className="flex items-center gap-1.5 text-sm font-bold text-foreground">
@@ -394,7 +308,6 @@ export function ReviewPanel({
           학생 이름과 번호는 AI로 전송되지 않습니다.
         </p>
       </section>
-      </div>
     </div>
   );
 }

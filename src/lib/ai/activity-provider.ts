@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { AiActivityDraft } from "../../features/activities/ai-schema.ts";
-import type { VlmProviderName } from "./contracts.ts";
 import {
   generateActivityDraftWithVlm,
   type ActivityDraftGenerationInput,
@@ -9,7 +8,7 @@ import {
 import { getVlmAdapter } from "./vlm-adapter.ts";
 
 export interface ActivityDraftAIProvider {
-  readonly provider: VlmProviderName;
+  readonly provider: "google";
   readonly model: string;
   generate(input: ActivityDraftGenerationInput): Promise<AiActivityDraft>;
 }

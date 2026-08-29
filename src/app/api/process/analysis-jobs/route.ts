@@ -1,19 +1,11 @@
 import { NextResponse } from "next/server";
 import { after } from "next/server";
 import { randomUUID } from "crypto";
-import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionTeacher } from "@/lib/auth/teacher";
-import { ProcessHandoffContractError } from "@/features/process/handoff-contract";
-import { resolveProcessHandoff } from "@/features/process/handoff";
-import { analysisJobFinalStatus, safeProcessingJobErrorMessage } from "@/features/process/job-state";
 import { analyzeOneSubmission } from "@/features/process/run";
 
 export const maxDuration = 300;
-
-const analysisJobRequestSchema = z.object({
-  submission_ids: z.array(z.string().uuid()).min(1).max(30),
-}).strict();
 
 /**
  * POST /api/process/analysis-jobs (TRD §28)
@@ -39,53 +31,36 @@ export async function POST(request: Request) {
     return envelope(401, null, { code: "UNAUTHORIZED", message: "로그인이 필요합니다." });
   }
 
-  let requestBody: unknown;
+  let submissionIds: string[];
   try {
-    requestBody = await request.json();
+    const body = (await request.json()) as { submission_ids?: unknown };
+    submissionIds = Array.isArray(body.submission_ids)
+      ? body.submission_ids.filter((v): v is string => typeof v === "string")
+      : [];
   } catch {
-    requestBody = null;
+    submissionIds = [];
   }
-  const parsed = analysisJobRequestSchema.safeParse(requestBody);
-  if (!parsed.success || new Set(parsed.data.submission_ids).size !== parsed.data.submission_ids.length) {
+  if (submissionIds.length === 0 || submissionIds.length > 30) {
     return envelope(400, null, {
       code: "INVALID_INPUT",
       message: "분석할 제출물을 1~30개 선택해 주세요.",
     });
   }
-  const submissionIds = parsed.data.submission_ids;
 
   const supabase = await createClient();
 
-  // PROCESS resolves every relation from IDs in Shared DB; the request carries no copied payload.
-  let handoffContexts;
-  try {
-    handoffContexts = await resolveProcessHandoff(supabase, teacher.id, submissionIds);
-  } catch (error) {
-    if (error instanceof ProcessHandoffContractError) {
-      if (error.code === "FORBIDDEN") {
-        return envelope(403, null, {
-          code: "FORBIDDEN",
-          message: "요청한 제출물 중 접근할 수 없는 항목이 있습니다.",
-        });
-      }
-      if (error.code === "NOT_READY") {
-        return envelope(409, null, {
-          code: "NOT_READY",
-          message: "분석 준비가 완료되지 않은 제출물이 포함되어 있어요. 학습관리에서 다시 확인해 주세요.",
-        });
-      }
-    }
-    console.error("PROCESS handoff resolution failed", {
-      errorType: error instanceof Error ? error.name : "UnknownError",
-    });
-    return envelope(500, null, {
-      code: "HANDOFF_FAILED",
-      message: "분석 대상을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.",
+  // Server Ownership Check (TRD §30.3) — RLS 범위에서 실제 조회되는 수와 비교
+  const { data: owned } = await supabase
+    .from("submissions")
+    .select("id")
+    .in("id", submissionIds);
+  const ownedIds = new Set((owned ?? []).map((s) => s.id));
+  if (ownedIds.size !== submissionIds.length) {
+    return envelope(403, null, {
+      code: "FORBIDDEN",
+      message: "요청한 제출물 중 접근할 수 없는 항목이 있습니다.",
     });
   }
-  const handoffBySubmission = new Map(
-    handoffContexts.map((context) => [context.submissionId, context]),
-  );
 
   // Job 생성 (TRD §16.15) — payload에는 최소 ID만 (Full Payload 금지)
   const { data: job, error: jobError } = await supabase
@@ -93,11 +68,8 @@ export async function POST(request: Request) {
     .insert({
       teacher_id: teacher.id,
       job_type: "ANALYSIS",
-      status: "QUEUED",
+      status: "PROCESSING",
       total_count: submissionIds.length,
-      completed_count: 0,
-      failed_count: 0,
-      current_step: "분석 대기 중",
       payload_json: { submission_ids: submissionIds },
     })
     .select("id")
@@ -120,71 +92,43 @@ export async function POST(request: Request) {
     const CONCURRENCY = 5; // Gemini 무료 등급 분당 한도 고려
     let completed = 0;
     let failed = 0;
+    let lastError: string | null = null;
     let cursor = 0;
-    let progressWrite = Promise.resolve();
-
-    const { error: startError } = await supabase
-      .from("processing_jobs")
-      .update({ status: "PROCESSING", current_step: `0/${submissionIds.length} 분석 중` })
-      .eq("id", job.id);
-    if (startError) console.error(`Processing Job start update failed [${startError.code}]`);
-
-    const persistProgress = () => {
-      const snapshot = { completed, failed, attempted: completed + failed };
-      progressWrite = progressWrite.then(async () => {
-        const { error: progressError } = await supabase
-          .from("processing_jobs")
-          .update({
-            completed_count: snapshot.completed,
-            failed_count: snapshot.failed,
-            current_step: `${snapshot.attempted}/${submissionIds.length} 분석 중`,
-          })
-          .eq("id", job.id);
-        if (progressError) console.error(`Processing Job progress update failed [${progressError.code}]`);
-      });
-      return progressWrite;
-    };
 
     const worker = async () => {
       while (true) {
         const i = cursor++;
         if (i >= submissionIds.length) return;
         try {
-          await analyzeOneSubmission(
-            supabase,
-            submissionIds[i],
-            handoffBySubmission.get(submissionIds[i])?.artifacts,
-          );
+          await analyzeOneSubmission(supabase, submissionIds[i]);
           completed += 1;
         } catch (e) {
           failed += 1;
-          console.error("PROCESS item failed", {
-            errorType: e instanceof Error ? e.name : "UnknownError",
-          });
+          lastError = e instanceof Error ? e.message.slice(0, 500) : "알 수 없는 오류";
         }
-        await persistProgress();
+        await supabase
+          .from("processing_jobs")
+          .update({
+            completed_count: completed,
+            failed_count: failed,
+            current_step: `${completed + failed}/${submissionIds.length} 처리`,
+          })
+          .eq("id", job.id);
       }
     };
 
     await Promise.all(
       Array.from({ length: Math.min(CONCURRENCY, submissionIds.length) }, () => worker()),
     );
-    await progressWrite;
 
-    const finalStatus = analysisJobFinalStatus(completed, failed);
-    const { error: finalError } = await supabase
+    await supabase
       .from("processing_jobs")
       .update({
-        status: finalStatus,
-        completed_count: completed,
-        failed_count: failed,
-        current_step: finalStatus === "FAILED"
-          ? "분석에 실패했어요"
-          : `분석 ${completed}건 완료 · 교사 검토 대기`,
-        error_message: safeProcessingJobErrorMessage(failed),
+        status: failed === submissionIds.length ? "FAILED" : "COMPLETED",
+        current_step: null,
+        error_message: lastError,
       })
       .eq("id", job.id);
-    if (finalError) console.error(`Processing Job final update failed [${finalError.code}]`);
   });
 
   return envelope(200, { job_id: job.id, total: submissionIds.length });

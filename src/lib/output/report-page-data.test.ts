@@ -5,7 +5,6 @@ import type { AnalysisStatus, ReviewDecision } from "@/shared/types/status";
 const {
   mapLiveReportRows,
   mapLatestLiveReportRows,
-  mapLatestApprovedAnalysisRows,
 }: typeof import("./report-page-data") = await import("./report-page-data" + ".ts");
 
 const teacherId = "teacher-1";
@@ -166,43 +165,5 @@ test("newest complete approved growth chain wins even when a newer event is inco
   );
 
   assert.ok(report);
-  assert.equal(report.growthEvent?.id, growthEvent.id);
-});
-
-test("approved Analysis and Evidence produce an activity report without fabricating GrowthEvent", () => {
-  const evidence = structuredClone(approvedLink().evidence) as unknown as Parameters<
-    typeof mapLatestApprovedAnalysisRows
-  >[0][number];
-  const analysis = Array.isArray(evidence.analyses) ? evidence.analyses[0] : evidence.analyses;
-  const artifact = Array.isArray(evidence.artifacts) ? evidence.artifacts[0] : evidence.artifacts;
-  assert.ok(analysis);
-  assert.ok(artifact);
-  const submission = Array.isArray(analysis.submissions) ? analysis.submissions[0] : analysis.submissions;
-  assert.ok(submission);
-  submission.structured_input = {
-    schema_version: "1",
-    questions: [{
-      question_id: "question-1",
-      response_type: "short_text",
-      response: { raw_text: "문단의 중심 내용을 설명했습니다." },
-    }],
-  };
-  submission.students = growthEvent.students;
-  artifact.artifact_role = "DERIVED";
-  artifact.source_artifact_id = "batch-original-1";
-  analysis.analysis_json = {
-    achievement_level: "중",
-    strengths: ["문단의 핵심 낱말을 찾았습니다."],
-    difficulties: [],
-    evidence: [{ claim: evidence.claim, question_id: "question-1", source_page: 2 }],
-    feedback_candidate: "찾은 핵심 낱말을 이어 중심 문장을 써 보세요.",
-  };
-
-  const report = mapLatestApprovedAnalysisRows([evidence], teacherId);
-  assert.ok(report);
-  assert.equal(report.report_kind, "activity");
-  assert.equal(report.growthEvent, null);
-  assert.equal(report.approvedEvidenceCount, 1);
-  assert.equal(report.student.name, "테스트학생");
-  assert.equal(report.neisDraft, "찾은 핵심 낱말을 이어 중심 문장을 써 보세요.");
+  assert.equal(report.growthEvent.id, growthEvent.id);
 });

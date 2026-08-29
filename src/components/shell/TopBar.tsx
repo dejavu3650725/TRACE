@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Bell, CircleHelp, ChevronDown, LogOut } from "lucide-react";
+import { Search, Bell, CircleHelp, ChevronDown, Plus, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { AddMaterialModal } from "./AddMaterialModal";
 
 /**
  * TopBar (TRD §33)
  * [Greeting 2줄] [Global Search] [Notification Badge] [Help] [User Menu]
+ * [+ 학습자료 추가] — 전역 Primary Action, 우측 정렬, 모든 보호 Route 상시 노출
  */
 export function TopBar({
   displayName = "선생님",
@@ -18,6 +20,7 @@ export function TopBar({
   displayName?: string;
   reviewPendingCount?: number;
 }) {
+  const [modalOpen, setModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -138,7 +141,19 @@ export function TopBar({
             </div>
           )}
         </div>
+
+        {/* 전역 Primary Action */}
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-brand-700"
+        >
+          <Plus className="h-4 w-4" />
+          학습자료 추가
+        </button>
       </div>
+
+      <AddMaterialModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </header>
   );
 }

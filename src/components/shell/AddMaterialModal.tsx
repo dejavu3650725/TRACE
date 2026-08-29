@@ -97,14 +97,21 @@ export function AddMaterialModal({
             <p className="mt-1 flex-1 text-sm text-muted">
               QR·짧은 링크를 학생에게 보여주고, 학생이 자기 기기로 촬영해 제출해요.
             </p>
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <button
                 type="button"
-                onClick={() => go("/results/add")}
+                onClick={() => go("/results/share")}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-700"
               >
                 <QrCode className="h-4 w-4" />
-                제출 링크 만들기
+                활동지로 QR 만들기
+              </button>
+              <button
+                type="button"
+                onClick={() => go("/results/import")}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-foreground transition-colors duration-200 hover:bg-neutral-bg"
+              >
+                CSV/XLSX 결과 가져오기
               </button>
             </div>
           </section>

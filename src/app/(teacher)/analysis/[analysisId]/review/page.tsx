@@ -84,68 +84,22 @@ export default async function AnalysisReviewPage({
     );
   }
 
-  // 직접 ORIGINAL과 Batch DERIVED → Teacher-owned ORIGINAL을 모두 해석한다.
-  // Signed URL은 서버에서 소유권/RLS 확인 후 짧게 발급한다 (TRD §30.8).
+  // 원본 이미지 — 짧은 만료 Signed URL (TRD §30.8)
   const { data: artifacts } = await supabase
     .from("artifacts")
-    .select("id, source_artifact_id, storage_path, file_name, mime_type, artifact_role, page_start, page_end")
+    .select("id, storage_path, mime_type")
     .eq("submission_id", analysis.submission_id)
+    .eq("artifact_role", "ORIGINAL")
     .order("created_at", { ascending: true })
     .limit(6);
 
-  const sourceIds = [...new Set((artifacts ?? []).flatMap((artifact) => (
-    artifact.artifact_role === "DERIVED" && artifact.source_artifact_id
-      ? [artifact.source_artifact_id]
-      : []
-  )))];
-  const { data: sourceArtifacts } = sourceIds.length > 0
-    ? await supabase
-      .from("artifacts")
-      .select("id, storage_path, file_name, mime_type, artifact_role")
-      .in("id", sourceIds)
-      .eq("artifact_role", "ORIGINAL")
-    : { data: [] };
-  const sources = new Map((sourceArtifacts ?? []).map((source) => [source.id, source]));
-  const resolvedOriginals = (artifacts ?? []).flatMap((artifact) => {
-    if (artifact.artifact_role === "ORIGINAL") {
-      return [{
-        artifactId: artifact.id,
-        originalArtifactId: artifact.id,
-        storagePath: artifact.storage_path,
-        fileName: artifact.file_name,
-        mimeType: artifact.mime_type,
-        pageStart: artifact.page_start,
-        pageEnd: artifact.page_end,
-      }];
-    }
-    if (artifact.artifact_role !== "DERIVED" || !artifact.source_artifact_id) return [];
-    const source = sources.get(artifact.source_artifact_id);
-    if (!source) return [];
-    return [{
-      artifactId: artifact.id,
-      originalArtifactId: source.id,
-      storagePath: source.storage_path,
-      fileName: source.file_name,
-      mimeType: source.mime_type,
-      pageStart: artifact.page_start,
-      pageEnd: artifact.page_end,
-    }];
-  });
-  const originalFiles = [];
-  for (const original of resolvedOriginals) {
+  const imageUrls: string[] = [];
+  for (const artifact of artifacts ?? []) {
+    if (!artifact.mime_type.startsWith("image/")) continue;
     const { data: signed } = await supabase.storage
       .from(STORAGE.BUCKET)
-      .createSignedUrl(original.storagePath, 600);
-    if (!signed?.signedUrl) continue;
-    originalFiles.push({
-      artifactId: original.artifactId,
-      originalArtifactId: original.originalArtifactId,
-      fileName: original.fileName,
-      mimeType: original.mimeType,
-      pageStart: original.pageStart,
-      pageEnd: original.pageEnd,
-      signedUrl: signed.signedUrl,
-    });
+      .createSignedUrl(artifact.storage_path, 600);
+    if (signed?.signedUrl) imageUrls.push(signed.signedUrl);
   }
 
   const studentLabel = student ? `${student.student_number}번 ${student.name}` : "학생";
@@ -178,7 +132,7 @@ export default async function AnalysisReviewPage({
         initial={parsed.data}
         levelOptions={levelOptions}
         standards={standards.map((s) => ({ id: s.standard_id, text: s.text }))}
-        originalFiles={originalFiles}
+        imageUrls={imageUrls}
         structuredInput={submission?.structured_input ?? null}
       />
     </div>

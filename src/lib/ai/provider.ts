@@ -27,16 +27,6 @@ export function getGeminiModel(): string {
   return process.env.GEMINI_MODEL ?? "gemini-3.6-flash";
 }
 
-/** Optional server-only fallback credential. A blank value keeps fallback disabled. */
-export function getOptionalUpstageApiKey(): string | null {
-  const key = process.env.UPSTAGE_API_KEY?.trim();
-  return key ? key : null;
-}
-
-export function getUpstageModel(): string {
-  return process.env.UPSTAGE_MODEL?.trim() || "solar-pro4";
-}
-
 /** Provider/model selection is configuration, not a Feature-level branch. */
 export function getAiProviderConfig(): AiProviderConfig {
   const adapter = process.env.AI_PROVIDER ?? "gemini";

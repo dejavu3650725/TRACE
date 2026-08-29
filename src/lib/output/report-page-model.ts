@@ -65,13 +65,11 @@ export interface ReportPageTimepoint {
 
 export interface ReportPageModel {
   data_mode: "live";
-  report_kind: "activity" | "growth";
   student: ReportStudent;
   subject_label: string;
   timepoints: readonly [ReportPageTimepoint, ...ReportPageTimepoint[]];
-  growthEvent: ReportGrowthEvent | null;
+  growthEvent: ReportGrowthEvent;
   growthEventEvidence: readonly ReportGrowthEventEvidence[];
-  approvedEvidenceCount: number;
   neisDraft: string;
 }
 
