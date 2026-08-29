@@ -136,7 +136,7 @@ npm run dev            # http://localhost:3000; npm run build && npm run start  
 
 ## 교사 개발자 윤리 자가점검
 
-- 응답 인원: 3명 / 팀원 3명
+- 응답 인원: 제작자 3명 전원 응답
 
 | 원칙 | 평균 점수 |
 | --- | --- |
