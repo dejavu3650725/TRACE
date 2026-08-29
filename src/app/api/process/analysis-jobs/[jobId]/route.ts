@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionTeacher } from "@/lib/auth/teacher";
+
+const jobIdSchema = z.string().uuid();
 
 /**
  * GET /api/process/analysis-jobs/[jobId] (TRD §28, §44)
@@ -27,14 +30,39 @@ export async function GET(
     );
   }
 
+  if (!jobIdSchema.safeParse(jobId).success) {
+    return NextResponse.json(
+      {
+        ok: false,
+        data: null,
+        meta: { request_id: requestId },
+        error: { code: "INVALID_INPUT", message: "작업 ID를 다시 확인해 주세요." },
+      },
+      { status: 400 },
+    );
+  }
+
   const supabase = await createClient();
-  const { data: job } = await supabase
+  const { data: job, error: jobError } = await supabase
     .from("processing_jobs")
     .select(
-      "id, status, total_count, completed_count, failed_count, current_step, error_message, created_at",
+      "id, job_type, status, total_count, completed_count, failed_count, current_step, error_message, created_at, updated_at",
     )
     .eq("id", jobId)
     .maybeSingle();
+
+  if (jobError) {
+    console.error(`Processing Job lookup failed [${jobError.code}]`);
+    return NextResponse.json(
+      {
+        ok: false,
+        data: null,
+        meta: { request_id: requestId },
+        error: { code: "JOB_LOOKUP_FAILED", message: "작업 상태를 불러오지 못했어요." },
+      },
+      { status: 500 },
+    );
+  }
 
   if (!job) {
     return NextResponse.json(

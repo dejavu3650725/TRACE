@@ -279,6 +279,9 @@ Missing or risky behavior relative to ISSUE-03:
 
 - ISSUE-24 adds a shared server-only Privacy Context Builder and provider-independent VLM adapter. Activity generation and PROCESS submission analysis both pass a privacy-sealed request through that boundary; Provider success/error metadata is normalized and raw error bodies are not propagated.
 - Gemini remains the configured hackathon Provider behind `AI_PROVIDER`/`GEMINI_MODEL`; this is environment configuration rather than a shared-contract change. The browser bundle is checked against the configured secret after production builds.
+- ISSUE-29 adds the prepared synthetic Batch PDF path: visible grade/class/number/name plus observable question responses are extracted without sending the roster, exact number+name is checked server-side and again in a fixed-shape RPC, and matched page references attach to one Student × ActivityAssignment Submission without duplicating the source PDF.
+- ISSUE-30 keeps Batch grouping intentionally pragmatic: a teacher-saved `page_start~page_end` is one multi-page student group, and REVIEW_PENDING groups can be resolved by selecting an active Student from the owned ActivityAssignment Class. The correction RPC reuses ISSUE-29 validation and preserves the immutable source PDF reference.
+- ISSUE-26/27 closes the unassigned Batch gap: an owned PDF is classified into editable Activity metadata/questions, Curriculum candidates are narrowed locally, deterministic existing Activity candidates are shown, and explicit Teacher confirmation atomically creates/connects an ACTIVE ActivityAssignment before student matching.
 - No `shared/curriculum/manifest.json` or curriculum JSON files are present.
 - No StructuredInput runtime schema exists; there is only a broad TypeScript interface.
 - No upload API, signed-URL helper, checksum/idempotency handling, image preprocessing, spreadsheet parser, QR generation, PDF handling, or processing-job polling exists.

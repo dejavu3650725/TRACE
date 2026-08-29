@@ -1,6 +1,11 @@
-export type VlmPurpose = "ACTIVITY_DRAFT" | "SUBMISSION_ANALYSIS" | "VLM_SMOKE_TEST";
+export type VlmPurpose =
+  | "ACTIVITY_DRAFT"
+  | "MATERIAL_CLASSIFICATION"
+  | "SUBMISSION_ANALYSIS"
+  | "BATCH_PDF_EXTRACTION"
+  | "VLM_SMOKE_TEST";
 
-export type VlmProviderName = "google";
+export type VlmProviderName = "google" | "upstage" | "fallback";
 
 export type VlmMediaPart = Readonly<{
   mimeType: string;

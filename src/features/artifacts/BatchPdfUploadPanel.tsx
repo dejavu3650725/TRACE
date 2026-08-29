@@ -28,7 +28,7 @@ export function BatchPdfUploadPanel({ recentBatches }: { recentBatches: RecentBa
       return;
     }
     setPending(true);
-    setMessage("원본 PDF와 페이지 수를 확인하고 있어요.");
+    setMessage("오늘 활동 PDF의 원본과 페이지 수를 확인하고 있어요.");
     const formData = new FormData();
     formData.set("file", file);
     let result;
@@ -51,8 +51,8 @@ export function BatchPdfUploadPanel({ recentBatches }: { recentBatches: RecentBa
       <div className="flex items-start gap-3">
         <div className="rounded-xl bg-brand-100 p-2.5 text-brand-700"><FileSearch className="h-5 w-5" /></div>
         <div>
-          <h2 className="text-lg font-bold text-foreground">Batch PDF 페이지 검사</h2>
-          <p className="mt-1 text-sm text-muted">여러 학생 자료가 담긴 PDF 원본을 한 번만 저장하고 페이지 구간을 나눠요. 학생 연결은 다음 단계에서 진행합니다.</p>
+          <h2 className="text-lg font-bold text-foreground">오늘 활동 PDF 업로드</h2>
+          <p className="mt-1 text-sm text-muted">이번 수업에서 수집한 학생 활동지가 들어 있는 PDF 한 개를 선택하세요.</p>
         </div>
       </div>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -69,10 +69,10 @@ export function BatchPdfUploadPanel({ recentBatches }: { recentBatches: RecentBa
         />
         <button type="button" onClick={upload} disabled={!file || pending} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
           {pending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {pending ? "검사 중…" : "원본 저장 후 검사"}
+          {pending ? "업로드 중…" : "PDF 업로드"}
         </button>
       </div>
-      <p className="mt-2 text-xs text-muted">PDF 30MB·100쪽 이하 · 원본 Binary는 한 번만 저장됩니다.</p>
+      <p className="mt-2 text-xs text-muted">PDF 30MB·100쪽 이하 · 업로드 후 활동과 학생을 자동으로 인식합니다.</p>
       {message ? <p role="status" className="mt-3 rounded-lg bg-surface px-4 py-3 text-sm text-foreground">{message}</p> : null}
 
       {recentBatches.length > 0 ? (
