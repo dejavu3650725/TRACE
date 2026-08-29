@@ -57,8 +57,43 @@ const analysisSourceSchema = z.object({
   previousApprovedEvidence: z.array(text(2_000)).max(50).optional(),
 });
 
+const batchPdfExtractionSourceSchema = z.object({
+  activity: z.object({
+    title: text(500),
+    description: z.string().trim().max(5_000).nullable(),
+    grade: z.number().int().min(1).max(12).nullable(),
+    questions: z.array(z.object({
+      questionId: text(100),
+      prompt: text(2_000),
+      responseType: z.string().trim().max(100).nullable(),
+      options: z.array(text(500)).max(20),
+    })).max(200),
+  }),
+  pageRanges: z.array(z.object({
+    rangeIndex: z.number().int().min(0).max(99),
+    pageStart: z.number().int().min(1).max(100),
+    pageEnd: z.number().int().min(1).max(100),
+  })).min(1).max(100),
+  pdf: z.object({
+    mimeType: z.literal("application/pdf"),
+    base64: text(20_000_000),
+  }),
+});
+
+const materialClassificationSourceSchema = z.object({
+  classContext: z.object({
+    grade: z.number().int().min(1).max(12).nullable(),
+  }),
+  pdf: z.object({
+    mimeType: z.literal("application/pdf"),
+    base64: text(20_000_000),
+  }),
+});
+
 export type ActivityDraftPrivacyContext = z.infer<typeof activityDraftSourceSchema>;
 export type SubmissionAnalysisPrivacyContext = z.infer<typeof analysisSourceSchema>;
+export type BatchPdfExtractionPrivacyContext = z.infer<typeof batchPdfExtractionSourceSchema>;
+export type MaterialClassificationPrivacyContext = z.infer<typeof materialClassificationSourceSchema>;
 
 export class PrivacyContextViolationError extends Error {
   constructor(path: string) {
@@ -97,6 +132,26 @@ export function buildSubmissionAnalysisPrivacyContext(
   const { images, ...textContext } = context;
   assertPrivacySafe(textContext);
   return { ...textContext, images };
+}
+
+/** The roster is intentionally not part of this allowlist. Visible identity exists only inside the synthetic PDF. */
+export function buildBatchPdfExtractionPrivacyContext(
+  input: unknown,
+): BatchPdfExtractionPrivacyContext {
+  const context = batchPdfExtractionSourceSchema.parse(input);
+  const { pdf, ...textContext } = context;
+  assertPrivacySafe(textContext);
+  return { ...textContext, pdf };
+}
+
+/** No roster or identity field is accepted. The Provider sees only the owned PDF and non-PII Class grade. */
+export function buildMaterialClassificationPrivacyContext(
+  input: unknown,
+): MaterialClassificationPrivacyContext {
+  const context = materialClassificationSourceSchema.parse(input);
+  const { pdf, ...textContext } = context;
+  assertPrivacySafe(textContext);
+  return { ...textContext, pdf };
 }
 
 const privacySafeRequestBrand = Symbol("trace.privacy-safe-vlm-request");

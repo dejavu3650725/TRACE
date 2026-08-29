@@ -2311,6 +2311,15 @@ AI: PROCESS 수행 시 필수
 SECURITY: 필수
 ```
 
+### 구현 메모 (2026-08-29, 해커톤 누적 이력 준비)
+
+- 시연 데이터 흐름을 `a1 → a2 → a3 → a4`의 서로 다른 수업일 Activity로 확정했다. `a1~a3`는 과거 이력이며 `parent_activity_id`로 선형 연결하고, `a4`는 발표 중 실제 일괄업로드용이므로 사전 시드가 실행되지 않는다.
+- `a1~a3` 각각에서 4번 김겸율·20번 유마루의 Submission은 해당 `sample_results_a*.pdf`를 실제 일괄업로드 경로로 처리한 결과만 사용한다. 시드 실행기는 파일별 SHA-256과 두 Submission의 `READY_FOR_PROCESS`, StructuredInput, ORIGINAL 참조를 확인한다.
+- 나머지 18명은 네 가지 작성 분포군으로 나눠 차시별로 다른 관찰 응답을 만든다. 합성 StructuredInput에는 정오·점수·성취 수준·Evidence·성장 판정을 넣지 않는다.
+- 각 합성 Submission은 Private Storage의 synthetic ORIGINAL Artifact, Artifact DB 레코드, 최소 `ARTIFACT_UPLOAD` 감사 로그까지 실제로 만든 뒤에만 `READY_FOR_PROCESS`로 전환한다.
+- 재현 명령은 `npm run demo:seed:a1`, `npm run demo:seed:a2`, `npm run demo:seed:a3`이며 앞 차시 20건 완료 전에는 다음 차시가 실행되지 않는다. 실행에는 로컬 서버 전용 `SUPABASE_SERVICE_ROLE_KEY`가 필요하다.
+- 사전 데이터에 가짜 `APPROVED` 분석을 넣지 않는다. 누적 성장 리포트 시연 전에는 실제 PROCESS 실행과 교사 승인이 별도로 필요하다.
+
 ---
 
 # Phase 8 — Existing Material Classification
@@ -2380,6 +2389,14 @@ Acceptance:
 - assigned paths bypass classification.
 ```
 
+### 구현 메모 (2026-08-29)
+
+- Teacher-owned Batch ORIGINAL PDF와 선택한 활성 Class만 입력으로 받아 인쇄된 활동 메타데이터·문항을 서버 VLM에서 추출한다.
+- 전체 Curriculum JSON은 Provider에 보내지 않고, 추출된 학년·교과·영역·키워드로 서버의 Curriculum Loader가 성취기준 후보를 결정한다.
+- 학년·교과로 좁힌 실제 Curriculum Standard를 제목·설명·안내문·영역·단원·핵심어·전체 문항과 점수화하고 가장 관련성 높은 1개만 교사 확인 화면에 표시한다.
+- 학생 식별정보·Roster는 이 분류 Context에 포함하지 않으며, 분류 결과는 교사 확인 전 DB Activity로 저장하지 않는다.
+- Batch 화면의 `PDF에서 활동 찾기`에서 제목·교과·영역·성취기준 후보를 확인·수정할 수 있다.
+
 ### 테스트
 
 ```text
@@ -2446,6 +2463,13 @@ Acceptance:
 - unrelated material is not forced into a match,
 - teacher makes the final decision.
 ```
+
+### 구현 메모 (2026-08-29)
+
+- 기존 ACTIVE Activity는 제목·학년·교과·영역·단원·유형·성취기준의 deterministic score로만 후보화하며 자동 병합하지 않는다.
+- 교사는 `기존 활동에 연결` 또는 `새 활동으로 저장·학급 배정` 중 하나를 명시적으로 선택한다.
+- 새 활동 확인 시 기존 `Activity`, `activity_standards`, `ActivityAssignment` 계약을 재사용하고 저장·활성화·학급 배정을 단일 DB 트랜잭션으로 처리한다.
+- 확인 완료된 ActivityAssignment가 즉시 ISSUE-29/30 학생·답안 연결 입력으로 이어진다.
 
 ### 테스트
 
@@ -2582,6 +2606,16 @@ Acceptance:
 - batch summary reports matched/review-pending/failed.
 ```
 
+### 구현 메모 (2026-08-29)
+
+- 시연 범위 조정: 흐림/선명 품질 비교와 자동 품질 점수는 제외하고 준비된 선명한 합성 PDF 경로를 우선 구현했다.
+- PDF에서 학년·반·번호·이름, 보이는 문항, 학생 작성 답안을 함께 추출한다. 학년·반은 인식 결과 확인용이며 Student 연결 근거는 아니다.
+- Provider에는 PDF·페이지 구간·선택된 Activity 문항만 보내며 전체 Roster는 보내지 않는다.
+- Provider 응답의 번호+이름이 선택된 ActivityAssignment Class의 활성 Student와 모두 완전일치할 때만 서버와 DB RPC에서 이중 검증 후 연결한다.
+- `submissions.structured_input`에는 문항별 관찰 응답만 Shared envelope로 저장하고 식별정보·정오·성취수준·Evidence·피드백은 저장하지 않는다.
+- 이 경로에 필요한 runtime envelope validation을 적용했지만, 다른 입력 경로까지 포함하는 ISSUE-23/25 전체 완료를 의미하지는 않는다.
+- Batch 처리 집계는 기존 `processing_jobs`에 최소 ID와 matched/review-pending/failed 카운트만 저장한다.
+
 ### 테스트
 
 ```text
@@ -2596,7 +2630,6 @@ SECURITY: 필수
 ## ISSUE-30. Batch Multi-page Grouping & Manual Correction
 
 ### 목표
-
 한 학생 여러 페이지를 같은 Submission으로 묶되 불확실하면 교사가 고친다.
 
 ### 선행 조건
@@ -2611,6 +2644,7 @@ ISSUE-29
 1/2/3페이지 혼합 Batch PDF
 첫 페이지만 이름이 있는 샘플
 페이지마다 이름이 있는 샘플
+
 ```
 
 ### Codex 모델 추천
@@ -2646,6 +2680,15 @@ Acceptance:
 - uncertainty is surfaced rather than guessed,
 - teacher correction persists.
 ```
+
+### 구현 메모 (2026-08-29)
+
+- 시연 범위 조정: 이름 유무·일부 페이지만 식별정보가 있는 조합별 샘플 휴리스틱은 제외했다.
+- 같은 파일 안에서 인쇄된 쪽 번호와 활동 반복 구조로 학생 1명당 연속 페이지 수를 제안하고, 제안값으로 학생별 `page_start~page_end` 묶음을 자동 생성한다. 학생 번호 순서는 추정하지 않는다.
+- 서로 다른 날의 `a1`, `a2`, `a3`는 각각 독립 Activity/ActivityAssignment/Submission으로 미리 축적된 이력이며, 시연 당일에는 새 활동 `a4` PDF 한 개를 투입한다. 각 파일 안에서는 같은 활동을 수행한 학생별 묶음을 분리한다.
+- ISSUE-29가 `REVIEW_PENDING`으로 남긴 묶음은 선택된 ActivityAssignment Class의 활성 Student 목록에서 교사가 직접 확정할 수 있다.
+- 교사 선택은 서버 인증·소유권 확인 후 DB RPC에서 다시 Class 범위를 검증하고, 기존 ISSUE-29 StructuredInput/Artifact 연결 계약을 재사용해 영속화한다.
+- ORIGINAL PDF는 변경하거나 복제하지 않고 기존 Page Range Artifact를 해당 Student × ActivityAssignment Submission에 연결한다.
 
 ### 테스트
 
@@ -2740,6 +2783,14 @@ Acceptance:
 - after S/T submission the page can show 20/20 from persisted data.
 ```
 
+### 구현 메모 (2026-08-29)
+
+- `/results`는 실제 ActivityAssignment를 기준으로 Activity → Class Roster → Student Submission을 조회한다.
+- 제출 수는 Submission 존재 건수, 미제출은 활성 Class Roster에서 해당 ActivityAssignment Submission이 없는 Student 수로 계산하며 하드코딩하지 않는다.
+- 입력·분석 상태별 집계와 학급·교과·성취기준·학생·상태·기간 필터를 실제 조회 결과에 적용한다.
+- 활동 카드를 펼치면 학생별 제출물과 미제출 학생을 확인하고, 제출물은 Submission 상세 경로로 이동한다.
+- 과거 A1→A3와 시연 당일 A4는 각각 다른 날짜·활동의 Submission이며, 동일 Student ID를 통해 추후 학습 흐름으로 조회된다. 한 번의 업로드에는 당일 활동 PDF 한 개만 투입한다.
+
 ### 테스트
 
 ```text
@@ -2805,6 +2856,14 @@ Acceptance:
 - READY_FOR_PROCESS appears only when all requirements are satisfied.
 ```
 
+### 구현 메모 (2026-08-29)
+
+- `/results/[submissionId]`의 `REVIEW_PENDING` Submission에만 검토 패널을 표시하며, 이미 성공한 Submission에는 중복 승인을 요구하지 않는다.
+- 교사는 같은 학급 범위에서 Student와 ActivityAssignment를 다시 선택하고 관찰 가능한 StructuredInput만 수정할 수 있다.
+- `resolve_submission_input_review` RPC가 Teacher 소유권, 동일 Class, 활성 Student/ActivityAssignment, 저장된 ORIGINAL 참조, StructuredInput 계약을 한 트랜잭션에서 재검증한다.
+- 모든 READY 조건을 통과한 경우에만 `input_status=READY_FOR_PROCESS`, `process_status=READY_TO_ANALYZE`로 함께 전환하며 분석 자체는 시작하지 않는다.
+- Student가 확정되지 않아 아직 Submission이 없는 Batch 항목은 ISSUE-30의 PDF 검토 화면에서 먼저 연결한다. Submission 생성 후 남은 응답 검토는 본 이슈 흐름에서 해결한다.
+
 ### 테스트
 
 ```text
@@ -2812,6 +2871,10 @@ LOCAL: 필수
 DB: 필수
 STORAGE: 권장
 ```
+
+- DB: `issue_32_review_pending_resolution.test.sql` 12개 검증 통과 (2026-08-29)
+- BUILD: `next build --webpack` 통과
+- LOCAL: `/results?tab=review&inputStatus=REVIEW_PENDING` 검토 흐름 확인
 
 ---
 
@@ -2869,12 +2932,27 @@ Acceptance:
 - selected submission_ids remain stable and explicit.
 ```
 
+### 구현 메모 (2026-08-29)
+
+- `/results`에 `활동 전체`, `학생 1명`, `학생 여러 명`, `현재 조회 결과` 선택 모드를 추가했다.
+- 선택 범위마다 전체 결과, 분석 준비, 선택 제외 개수를 표시하며 `input_status=READY_FOR_PROCESS`인 Submission만 명시적인 `submission_id[]`로 확정한다.
+- `REVIEW_PENDING`, 미제출, 그 밖의 INPUT 상태는 개수에는 포함하되 확정 ID에는 포함하지 않는다.
+- 동일 조건을 다시 계산해도 결과 카드 순서를 기준으로 ID 순서가 안정적으로 유지되며 중복 ID를 제거한다.
+- 이 단계에서는 PROCESS 분석 API, AI 호출, `processing_jobs` 생성을 실행하지 않는다. 실제 서버 Handoff와 실행은 ISSUE-34 범위로 남긴다.
+- DB/Storage 공통 계약 변경이 없어 Migration은 추가하지 않았다.
+
 ### 테스트
 
 ```text
 AUTO: selection eligibility tests
 LOCAL: 필수
 ```
+
+- AUTO: `processing-scope.test.mjs` 5개 검증 통과
+- TYPECHECK: `tsc --noEmit` 통과
+- LINT: ISSUE-33 변경 파일 통과
+- BUILD: `next build --webpack` 통과
+- LOCAL: `http://localhost:3000/results`에서 선택 모드별 개수와 확정 메시지 확인 필요
 
 ---
 
@@ -2949,6 +3027,16 @@ Acceptance:
 - live S/T handoff works independently from the 18 preloaded students.
 ```
 
+### 구현 메모 (2026-08-29)
+
+- `/results`에서 확정한 범위는 `{ "submission_ids": [...] }`만 기존 PROCESS Job API로 전달한다.
+- PROCESS 서버 resolver가 각 ID에서 Student→Class, ActivityAssignment→Activity→Standard, StructuredInput, INPUT/PROCESS 상태, Artifact 관계를 Shared DB에서 다시 조회한다.
+- Job 생성 전에 교사 소유권, Student와 Assignment의 동일 Class, `READY_FOR_PROCESS`, 유효 StructuredInput, 저장된 ORIGINAL 참조와 Private Storage 읽기 가능 여부를 재검증한다.
+- 직접 제출 ORIGINAL뿐 아니라 Batch PDF의 Submission-owned DERIVED Page Range→Teacher-owned ORIGINAL 참조도 같은 계약으로 해석한다.
+- `processing_jobs.payload_json`에는 `submission_ids`만 저장하고 Student/Activity/Artifact/StructuredInput을 복제하지 않는다.
+- S/T IDs만 요청하면 준비된 18명 Submission은 resolver나 PROCESS Job 대상에 포함되지 않는다.
+- Shared Entity/상태/Route/DB Schema 변경이 없어 Migration은 추가하지 않았다.
+
 ### 테스트
 
 ```text
@@ -2956,6 +3044,15 @@ AUTO: integration test 필수
 LOCAL: 권장
 DB: 필수
 ```
+
+- AUTO: `process-handoff.test.mjs` 5개 검증 통과
+- REGRESSION: `processing-scope.test.mjs` 5개 검증 통과
+- TYPECHECK: `tsc --noEmit` 통과
+- LINT: ISSUE-34 변경 파일 통과
+- BUILD: `next build --webpack` 통과
+- DB: `issue_34_process_handoff.test.sql` 11개 검증 통과 (2026-08-29)
+- REMOTE DB: ISSUE-29/30의 `commit_batch_student_match`, `commit_batch_teacher_correction` RPC 적용 확인
+- LOCAL: `http://localhost:3000/results`에서 S/T만 선택 후 Job 진행 화면 이동 확인 필요
 
 ---
 # Phase 12 — Processing Jobs, Audit & Stability
@@ -3030,6 +3127,18 @@ Acceptance:
 - demo path never shows fake completed state while work is still pending.
 ```
 
+### 구현 메모 (2026-08-29)
+
+- 분석 Job은 DB에 `QUEUED`로 먼저 저장하고 실제 백그라운드 작업이 시작된 뒤 `PROCESSING`으로 전환한다.
+- 병렬 분석 결과의 진행률 DB 갱신은 순서대로 직렬화하여 `completed_count`와 `failed_count`가 이전 값으로 되돌아가지 않게 했다.
+- 한 건이라도 성공하면 최종 상태를 교사 검토가 필요한 `REVIEW_REQUIRED`로 저장하고, 전 건 실패한 경우에만 `FAILED`로 저장한다.
+- `payload_json`에는 명시적인 `submission_ids`만 저장하며 Student 정보, 답안, Artifact 내용은 복제하지 않는다.
+- Provider 예외 원문은 Job이나 화면에 저장하지 않고 실패 건수와 일반화된 오류 메시지만 남긴다.
+- Job 조회 API는 UUID 형식과 교사 소유권을 확인하고 진행 건수, 현재 단계, 상태, 생성·갱신 시각만 반환한다.
+- 진행 화면은 DB 상태를 2초 간격으로 조회하며 일시적 조회 오류는 최대 3회 재시도한다. 새로고침하거나 같은 Job URL로 다시 이동해도 DB의 현재·최종 상태를 복구한다.
+- `REVIEW_REQUIRED`, `COMPLETED`, `FAILED`를 모두 종료 상태로 처리하여 완료 후 불필요한 polling이 계속되지 않게 했다.
+- Shared Entity, enum, Route, DB Schema 변경이 없어 Migration은 추가하지 않았다.
+
 ### 테스트
 
 ```text
@@ -3037,6 +3146,14 @@ AUTO: status transition tests
 LOCAL: 필수
 DB: 필수
 ```
+
+- AUTO: `processing-job-state.test.mjs` 상태 전이 5개 검증 통과
+- REGRESSION: `process-handoff.test.mjs` 5개, `processing-scope.test.mjs` 5개 검증 통과
+- TYPECHECK: `tsc --noEmit` 통과
+- LINT: ISSUE-35 변경 파일 통과
+- BUILD: `next build --webpack` 통과
+- DB: `issue_35_processing_jobs.test.sql` 11개 검증 통과 (2026-08-29)
+- LOCAL: 실제 분석 Job 생성 후 진행 화면, 일부 실패 표시, 새로고침 복구 확인 필요
 
 ---
 ## ISSUE-36. Audit Log Coverage
