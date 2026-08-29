@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { ClassInsights } from "@/features/reports/ClassInsights";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -25,7 +26,7 @@ export const metadata: Metadata = { title: "리포트" };
 export const dynamic = "force-dynamic";
 
 type ReportView = "all" | "cumulative" | "difficulty";
-type ReportSearchParams = { view?: string; q?: string };
+type ReportSearchParams = { view?: string; q?: string; fs?: string; fd?: string; fst?: string };
 
 const TREND_LABEL: Record<StudentLearningTrend, {
   label: string;
@@ -80,33 +81,12 @@ export default async function ReportsPage({
         description="교사가 승인한 학생별 활동 기록과 시간에 따른 변화를 조회해요."
       />
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="승인 자료 요약">
-        <StatCard
-          label="기록이 있는 학생"
-          value={data.students.length}
-          hint="승인 활동이 한 건 이상인 학생"
-          icon={<UserRound className="h-4.5 w-4.5" />}
-        />
-        <StatCard
-          label="승인 활동"
-          value={data.approvedRecordCount}
-          hint="교사 승인이 완료된 분석"
-          icon={<CheckCircle2 className="h-4.5 w-4.5" />}
-          tone="brand"
-        />
-        <StatCard
-          label="누적 관찰 학생"
-          value={data.cumulativeStudentCount}
-          hint="서로 다른 활동 기록 2건 이상"
-          icon={<BookOpenCheck className="h-4.5 w-4.5" />}
-        />
-        <StatCard
-          label="승인 근거"
-          value={data.approvedEvidenceCount}
-          hint="승인 분석에 연결된 관찰 근거"
-          icon={<FileCheck2 className="h-4.5 w-4.5" />}
-        />
-      </section>
+      {/* 학급 학습 시각화 — 학부모 상담용, 교과/영역/학생 필터 (승인 분석만) */}
+      <ClassInsights
+        subject={query.fs?.trim() || null}
+        domain={query.fd?.trim() || null}
+        studentId={query.fst?.trim() || null}
+      />
 
       <TabNav
         activeKey={activeView}
