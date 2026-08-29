@@ -1,63 +1,156 @@
-# TRACE
+# TRACE — 교사용 학습 성장 지원 시스템
 
-학생의 종이·디지털 학습결과를 입력받아 교육과정 기준으로 구조화하고, 성취기준별 AchievementLevel을 기준으로 분석·누적하여 피드백·후속학습·성장 리포트로 연결하는 **교사용 학습 성장 지원 시스템**.
+> 교사가 빈 활동지를 찍어 올리면 TRACE가 2022 개정 교육과정 성취기준을 찾아 활동을 만들고 그 자리에서 학생 제출 QR을 발급합니다. 학생이 QR로 접속해 다 채운 활동지를 촬영·제출하면 AI가 분석 초안을 만들고, 교사가 원본 근거를 확인·승인한 결과만 대시보드·성장 리포트·학급 시각화로 연결됩니다.
 
-> 기준 문서: `TRACE_PRD_v3.md` · `TRACE_TRD_v3.md` (팀 공유 문서)
-> AI는 판정자가 아니라 근거를 찾아 정리하는 보조자다. 교육적 판단은 반드시 Teacher Approval Gate를 거친다.
+[🌐 바로 사용하기](https://trace-rho-sandy.vercel.app) [💻 소스코드](https://github.com/dejavu3650725/TRACE) [▶️ 시연 보기](https://없음)
 
-## 기술 스택
+## 대표 화면과 링크
 
-Next.js (App Router) · TypeScript · Tailwind CSS · lucide-react · Supabase (Auth/PostgreSQL/Storage) · Gemini (VLM, 서버 전용) · Vercel
+![대표 화면](https://dutmlwajdhdbjmdijefy.supabase.co/storage/v1/object/sign/post-images/comment-711e83a5-db11-441e-811d-bb3eee3c830f.jpg?token=eyJraWQiOiI4ZmZiMjFmMC1hMjhmLTRiM2QtODJlMi1jYjJiNDgxNTBmYjUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJwb3N0LWltYWdlcy9jb21tZW50LTcxMWU4M2E1LWRiMTEtNDQxZS04MTFkLWJiM2VlZTNjODMwZi5qcGciLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzg3OTY3OTU2LCJleHAiOjIxMDMzMjc5NTZ9.mpbh7aBbLLlecJ5p3S7i-R2CLaQuaDmV_5ZZzixbskk)
 
-## 시작하기
+## 최종적으로 해결한 문제
+
+교사는 종이, PDF, 스프레드시트, Drive와 개인 메모 등에 흩어진 학생 학습결과를 이미 보관하고 있지만, 자료를 학생·활동·성취기준별로 다시 연결하고 원본 근거를 찾아 피드백·후속학습·상담·기록으로 바꾸는 데 많은 시간이 듭니다. 수업 중에는 "활동지 한 장"에서 평가·기록까지 이어지는 길이 너무 길고, 자료가 많아도 AI의 판단 근거와 교사의 승인 상태가 분리되어 있으면 결과를 교육적으로 다시 사용하기 어렵습니다.
+
+### 어떻게 풀었나요?
+
+수업의 시작점을 "빈 활동지 한 장"으로 만들었습니다. 교사가 활동지 사진이나 PDF를 올리면 서버가 2022 개정 교육과정 성취기준 후보(학년군·전 교과)를 붙여 Gemini에 전달하고, AI가 제안한 성취기준 연결·활동 구성을 그대로 활동으로 저장한 뒤 즉시 학생 제출 QR을 발급합니다. 학생은 QR로 접속해 학급 코드·번호·이름으로 본인 확인을 하고 다 채운 활동지를 촬영 제출하며, 제출 즉시 서버가 자동으로 AI 분석 초안을 만듭니다. 교사는 원본과 Evidence를 함께 보며 분석을 승인·수정·반려하고, 승인된 결과만 학생별 성장 리포트와 학급 학습 시각화(교과·영역·학생 필터), 교사 수정용 나이스 기록 제안으로 연결됩니다. 기존의 교사 직접 업로드 경로(이미지·PDF·Batch PDF·CSV/XLSX 결과 가져오기)도 함께 제공합니다.
+
+## 핵심 기능
+
+- **빈 활동지로 바로 QR 만들기**: 활동지 사진·PDF 1장을 올리면 AI가 학년군에 맞는 2022 개정 교육과정 성취기준(전 교과 후보 중 1~3개)을 연결해 활동을 만들고, 그 자리에서 학생 제출 QR을 발급합니다.
+- **학생 직접 제출(공개 제출 경로)**: QR 링크에는 개인정보 없는 익명 토큰만 담기고, 학생은 학급 코드·번호·이름으로 서버 검증을 통과해야 제출할 수 있습니다. 검증 실패는 통일된 한 가지 문구로만 안내하고, IP·토큰 기준 요청 제한(Rate Limit)을 둡니다.
+- **다중 촬영 제출과 품질 안내**: 학생이 여러 장을 촬영·미리보기·재촬영해 제출하고, 어두움·흔들림은 경고로만 안내합니다. 제출 완료 즉시 서버가 자동으로 분석 작업을 시작합니다.
+- **재제출 격리**: 같은 학생이 다시 제출하면 시도 번호를 올려 이전 사진·이전 분석과 섞이지 않게 하고, 새 분석이 확정되면 이전 초안은 자동으로 반려 처리됩니다.
+- **개인정보 경계를 둔 Gemini 분석 초안**: 서버에서만 VLM을 호출하고 학생 이름·번호 등 직접 식별정보를 텍스트 분석 맥락에서 제외합니다. 금지 패턴 검사(Privacy Guard)를 우회하지 않고 통과하도록 컨텍스트를 구성합니다.
+- **교사 분석 검토·승인·반려**: 활동별로 묶인 검토 대기 목록에서 원본 Artifact와 AI 초안을 함께 보고 APPROVED, EDITED_APPROVED, REJECTED로 확정합니다. 승인 완료 목록에서 학생 리포트로 바로 이동합니다.
+- **학급 학습 시각화(학부모 상담용)**: 승인된 분석만 집계해 성취 분포, 시간에 따른 성취 추이, 교과 영역별 레이더(교과마다 영역 수에 맞는 다각형), 학생별 평균을 보여주고 교과·영역·학생 단위로 필터링합니다.
+- **학생별 성장 리포트**: 승인 Evidence 기반의 누적 기록과 변화 추세를 학생 단위로 조회합니다.
+- **2022 개정 교육과정 데이터 내장**: 초등 전 교과 성취기준 JSON(11개 교과 파일, 성취기준 600여 개)과 성취수준(상·중·하) 데이터를 코드에 포함해 AI 연결·분석·시각화의 공통 기준으로 사용합니다.
+- **교사 원본 결과물 업로드**: 이미지·PDF를 활동·학생 Submission과 연결해 원본 Artifact로 저장하고, Batch PDF 페이지 범위와 CSV/XLSX 결과 가져오기를 지원합니다.
+- **Google 교사 로그인과 학급·명단 관리**: 하나의 Google 로그인 진입점, 학급 생성과 학급 코드 발급(만료 관리), CSV/XLSX 표준 명단 검증·미리보기 저장.
+- **교사 수정용 나이스 기록 제안**: 승인 Evidence를 참고한 초안을 교사가 의미 있게 수정하고 확인한 뒤 복사하거나 인쇄·PDF로 저장할 수 있습니다.
+
+## 사용 흐름과 사용 방법
+
+1. 교사가 /login에서 Google 로그인하고, 학급을 만들어 학급 코드를 발급하고 학생 명단을 등록한다.
+2. 학습관리의 [학생 제출 QR]에서 학급을 고르고 빈 활동지 사진·PDF를 올린 뒤 [활동 만들고 QR 발급]을 누른다.
+3. AI가 성취기준을 연결해 활동을 만들고, 화면에 학생 제출 QR과 링크가 바로 나타난다.
+4. 학생이 자기 기기로 QR을 스캔해 학급 코드·번호·이름을 입력하고, 다 채운 활동지를 촬영해 제출한다.
+5. 제출 즉시 서버가 자동으로 Gemini 분석 초안을 만들어 평가관리의 검토 대기에 쌓인다.
+6. 교사가 원본과 분석을 대조해 승인·수정 승인·반려한다.
+7. 승인된 결과가 대시보드, 학생별 성장 리포트, 학급 학습 시각화(교과·영역·학생 필터)에 누적된다.
+8. 교사가 Evidence를 근거로 나이스 기록 제안을 자기 문장으로 수정·확인한 뒤 복사하거나 PDF로 저장한다.
+
+- 사용 환경: 교사 화면은 PC 웹 중심의 반응형 UI, 학생 제출 화면은 모바일 브라우저 중심입니다.
+- 사용 조건: 공개 페이지는 로그인 없이 볼 수 있습니다. 교사 기능은 유효한 Supabase 세션과 Google 로그인 설정이 필요합니다. 해커톤 Beta에서는 합성 학생 데이터만 사용하며, 실제 학생 데이터 운영은 Production Privacy Gate 완료 전에는 하지 않습니다.
+
+## 기술 스택과 실행 방법
+
+- **화면**: Next.js 16.3.3 App Router, React 19, TypeScript 5, Tailwind CSS 4, lucide-react, qrcode
+- **서버·백엔드**: Next.js Server Component·Server Action·Route Handler, Supabase SSR, Supabase PostgreSQL, RLS와 서버 소유권 검사. 학생 공개 제출 경로는 서버 전용 service_role 클라이언트와 보안 정의 RPC로만 처리합니다.
+- **AI**: Google Gemini VLM. 서버 전용 REST Adapter가 사용되며 GEMINI_MODEL이 없으면 코드 기본값은 gemini-3.6-flash입니다. 실제 배포 모델은 환경변수 설정에 따라 달라질 수 있습니다.
+- **저장소**: Supabase PostgreSQL에 교사·학급·학생·활동·Submission·Analysis·Evidence 등을 저장하고, Supabase Private Storage의 trace 버킷에 원본 Artifact를 UUID 경로로 저장합니다(경로에 개인정보 없음). 원본 조회에는 짧은 만료 Signed URL을 사용합니다.
+- **배포**: Vercel. https://trace-rho-sandy.vercel.app 에서 즉석 QR 발급 → 학생 폰 제출 → 자동 분석 → 승인 → 리포트까지의 전체 경로 동작을 확인했습니다.
+
+### 폴더 구조
+
+```text
+src/app: 라우트·페이지·API (공개 제출 API 포함)
+src/components: 공통 Shell/UI·차트
+src/features: classes·roster·activities(quick-qr)·artifacts·submit·process·reports
+src/lib: Supabase·AI·교육과정(curriculum)·출력 데이터·인증
+src/shared/types: 공통 Entity·상태 타입
+supabase/migrations: DB·RLS·Storage·공개 제출 계약
+Curriculum JSON: 2022 개정 교육과정 성취기준·성취수준 원자료
+public/demo: 합성 활동지 PDF
+```
+
+### 설치와 실행
 
 ```bash
-npm install
-cp .env.example .env   # 값은 팀 채널에서 안전하게 공유 (절대 커밋 금지)
-npm run dev            # http://localhost:3000
+npm install; cp .env.example .env   # 실제 환경변수를 안전하게 입력
+npm run dev            # http://localhost:3000; npm run build && npm run start   # 프로덕션 확인
 ```
 
-보호된 교사 화면은 개발·배포 환경 모두 유효한 Supabase Session을 요구한다.
+- 필요한 환경변수(이름만): NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY(서버 전용), AI_PROVIDER, GEMINI_API_KEY, GEMINI_MODEL, NEXT_PUBLIC_AUTH_BYPASS
 
-## 로컬 DB 만들기
+## 작동 범위와 한계, 다음 계획
 
-Docker/OrbStack을 실행한 뒤 `npx supabase start`와 `npx supabase db reset`을 사용한다.
-순서가 보장된 migration으로 테이블, RLS 정책, Private Storage Bucket(`trace`)이 생성된다.
+- 지금까지 확인한 범위: 즉석 QR 발급 → 학생 모바일 제출 → 자동 분석 → 교사 승인 → 학생 리포트·학급 시각화까지의 전체 경로를 배포 환경에서 합성 데이터로 확인했습니다. 재제출 격리, 검증 실패 통일 문구, 공개 제출 Rate Limit, 교육과정 JSON 로딩과 영역 매핑, 타입 검사, 프로덕션 빌드를 확인했습니다. 실제 학생·교사 수업 사용은 확인하지 않았습니다.
 
-## 브랜치 규칙 (3인 팀)
+### 기술적 한계
 
-| 브랜치 | 담당 | 라우트 |
-|---|---|---|
-| `main` | 배포 (직접 푸시 금지, PR로만) | — |
-| `feat/input` | INPUT 모듈 | `/results/*` `/activities/*` `/submit/*` `/classes/*` |
-| `feat/process` | PROCESS 모듈 | `/analysis/*` |
-| `feat/output` | OUTPUT 모듈 | `/reports/*` `/dashboard` |
+- Gemini 무료 사용량 한도(분당·일일)에 걸리면 활동 생성·분석이 일시적으로 실패할 수 있습니다. 현재는 API 키 교체와 재시도로 대응하며, 자동 대기·재시도 큐는 없습니다.
+- 활동지에서 만든 활동의 제목·문항 구성은 AI 제안 그대로 저장됩니다. 발급 전 교사가 성취기준·문항을 다듬는 중간 확인 화면은 아직 없습니다.
+- 실제 학생 데이터의 이미지 안에 이름·번호가 들어오는 경우를 자동으로 가리는 PII Redaction은 아직 Production Gate 항목입니다.
+- 실제 학생 데이터 운영에 필요한 Provider 보존·학습 사용·처리 지역 검토, 백업 포함 보존·삭제 정책, 사고 대응 절차가 완료되지 않았습니다.
+- DATA_DELETE 감사 이벤트의 계약은 있으나 전체 Student → Submission → Artifact → Analysis → Evidence 삭제 작업 흐름은 확인되지 않았습니다.
+- 현장 교사·학생을 대상으로 한 효과, 시간 절감, 접근성, 여러 기기에서의 실제 제출 성공률은 검증하지 않았습니다.
+- 전체 lint는 완전히 깨끗하지 않을 수 있습니다. 타입 검사와 프로덕션 빌드 통과를 기준으로 관리하고 있습니다.
+- 루트 LICENSE와 public 자산의 출처·라이선스 표기가 없습니다.
+- 시연 영상 URL과 실제 대표 이미지 파일은 저장소에서 확인되지 않습니다.
 
-작업 → 푸시 → GitHub PR → 리뷰 후 main 머지. 브랜치 푸시마다 Vercel Preview URL이 생성된다.
+### 다음 계획
 
-## 공통 구조 (임의 변경 금지 — 팀 합의 후 변경)
+- QR 발급 전 교사가 AI가 연결한 성취기준·문항을 확인·수정하는 중간 검토 단계를 추가합니다.
+- Gemini 사용량 한도에 대한 자동 재시도·대기열과 사용량 표시를 추가합니다.
+- 실제 학생 데이터 사용 전 Production Privacy Gate를 완료합니다. 원본 이미지 내 이름·번호 자동 마스킹, Provider 정책·보존·삭제·기관 승인·사고 대응을 확인합니다.
+- Student 삭제와 연결 데이터 삭제·비식별화, DATA_DELETE 감사 기록, 보존 기간을 운영 정책과 코드로 연결합니다.
+- 여러 기기·브라우저에서의 학생 제출 성공률과 접근성(기기 없는 학생의 교사 업로드 병행 포함)을 현장 조건으로 검증합니다.
+- 전체 린트 오류와 의존성 보안 경고를 정리하고, 코드·문서·교육과정 JSON·브랜딩 자산의 라이선스와 출처를 저장소에 명시하며, 공개 시연 영상·대표 이미지를 추가합니다.
 
-```
-src/
-├─ app/
-│  ├─ (teacher)/        보호된 교사 화면 (공통 App Shell 적용)
-│  ├─ login/  auth/     Google OAuth
-│  └─ submit/[token]/   학생 제출 (Shell 미적용, 모바일 우선)
-├─ components/
-│  ├─ shell/            TeacherAppShell · Sidebar · TopBar · AddMaterialModal ...
-│  └─ ui/               StatusBadge · TrustBadge · EmptyState · StatCard · DataTable ...
-├─ lib/
-│  ├─ supabase/         client.ts(브라우저) · server.ts(서버)
-│  ├─ ai/               AI Adapter (서버 전용, GEMINI_API_KEY)
-│  └─ config.ts         파일 제한 등 공통 Config 상수
-└─ shared/types/        공통 Entity 타입 · Status Enum · UI 라벨 매핑
-```
+## 교육 현장에서 사용할 때의 주의사항
 
-핵심 규칙 (TRD 요약):
+- **개인정보 처리 여부**: 처리함
+- **예상되는 위험**: Gemini 오분석, 원본 이미지 속 이름·번호의 외부 전송, 잘못된 권한 설정, 승인되지 않은 분석의 리포트 노출, 보존·삭제 공백, 학생의 기기·계정 장벽, 의존적인 교사 판단이 위험입니다.
+- **위험을 줄이려고 한 일**: Google 세션·Supabase RLS·서버 소유권 검사를 사용하고, 원본을 Private Storage와 UUID 경로로 보관하며, Signed URL을 짧게 발급합니다. AI 호출은 서버 전용이고 이름·번호는 텍스트 컨텍스트에서 제외하며, 금지 패턴 검사를 우회하지 않습니다. QR·링크·토큰에는 학생 개인정보를 담지 않고, 학생 검증 실패는 통일된 한 가지 문구로만 안내하며 요청 제한을 둡니다. AI 초안은 교사 승인 전에는 리포트·시각화에 쓰지 않습니다.
+- **멈춤 기준**: 실제 학생 데이터를 Production Privacy Gate 전에 사용하지 않습니다. PII가 AI 요청·로그·토큰·QR에 들어가거나, RLS·소유권 검사가 실패하거나, 미승인·반려 결과가 리포트에 나타나거나, 반복 오분석·권한 오류·개인정보 사고가 확인되면 분석·공개 제출을 중단하고 접근 차단과 원인 조사로 전환합니다.
+- **검증 방법**: 입력 경계·명단·파일·AI 프라이버시·승인 전파 테스트와 타입 검사·빌드를 실행하고, 교차 교사·미승인·반려 데이터가 리포트에 들어가지 않는지 확인합니다. 배포 환경에서 즉석 QR 발급 → 학생 제출 → 자동 분석 → 승인 → 리포트 경로를 합성 데이터로 확인했습니다. 실제 Google OAuth·원격 Supabase·교사/학생 수신자 접근은 별도 수동 검증이 필요합니다.
 
-- 모듈 간 데이터 전달은 `submission_id[]` — 전체 객체 복제 금지
-- 기술 Enum을 화면에 그대로 노출하지 않는다 (`shared/types/status.ts` 매핑 사용)
-- AI 호출은 서버에서만. 브라우저에 API Key·Service Role 노출 금지
-- 원본 Artifact는 보존, Storage는 Private + Signed URL
-- MUI/AntD 등 무거운 UI 프레임워크 금지. 차트는 div+flex+%로 구현
-- 하드코딩 데모 숫자로 기능 완료를 대체하지 않는다
+### 입력·전송·저장 정보
+
+- 교사 Google 계정 정보 — 교사가 Google 로그인할 때 OAuth가 제공 — Google OAuth와 Supabase Auth 처리에 사용
+- 학생 이름·번호 — 교사가 학급 명단을 등록·수정하고, 학생이 제출 시 본인 확인에 입력 — 서버 검증에만 사용하고 AI 텍스트 컨텍스트·QR·URL·토큰에는 넣지 않음. 원본 이미지에 포함된 식별정보 자동 마스킹은 미구현
+- 학생 학습결과 원본 이미지·PDF — 학생이 QR 경로로 촬영 제출하거나 교사가 업로드 — Private Storage에 UUID 경로로 저장하고, 분석 시 짧은 만료 URL로 읽어 Gemini에 전달할 수 있음. 원본 이미지 자동 PII 제거는 아직 없음
+- 빈 활동지 이미지·PDF — 교사가 QR 발급을 위해 업로드 — 성취기준 연결·활동 구성에 필요한 범위로 Gemini에 전달
+- AI 분석 초안·Evidence·교사 Review — Gemini가 초안을 만들고 교사가 승인·수정·반려 — Gemini 호출에 필요한 분석 데이터만 전송
+- 감사로그 — 로그인·명단 import·원본 업로드·분석 검토 때 서버가 기록 — 외부 AI로 보내지 않음
+- QR·submission token — 교사가 발급 — 링크에는 무작위 익명 토큰만 담기고 학생 개인정보를 포함하지 않음. 서버가 학급 코드·번호·이름으로만 본인 확인
+
+### 교육적 태도 점검
+
+- 평가·추천·피드백을 프로그램이 대신 확정하지 않게 했나요?: 점검하다 고쳤어요 (AI 결과를 AI_DRAFT로 저장하고, 교사가 승인·수정 승인·반려해야 확정되도록 했습니다. 리포트·시각화는 승인된 Evidence만 읽습니다.)
+- 학생이나 교사의 생각을 대신하지 않게 했나요?: 점검하다 고쳤어요 (관찰자 observed_text를 제거하고 직접 관찰 필드와 학생 원문을 분리했습니다. 성취수준·강점·어려움·성장 해석은 교사 검토 대상입니다.)
+- 저장·전달·제출 전에 사람이 확인할 수 있나요?: 점검하다 고쳤어요 (학생은 촬영본을 미리보기·재촬영한 뒤 제출하고, 분석 결과는 교사가 원본과 대조해 승인해야 확정됩니다. 나이스 제안문은 교사가 의미 있게 수정하고 확인하기 전에는 복사·인쇄할 수 없습니다.)
+- 기기·계정·조작 문제로 참여에서 빠지는 사람이 없게 했나요?: 점검하다 고쳤어요 (학생 제출은 앱 설치·계정 없이 모바일 브라우저에서 QR·학급 코드만으로 가능하게 했고, 기기가 없는 학생은 교사 업로드 경로로 같은 흐름에 참여합니다. 실제 기기별 제출 성공률은 아직 확인하지 않았습니다.)
+
+## 제작자와 라이선스
+
+- 나혜진 · 서울원광초등학교 3학년 담임
+- 김준오 · 영신여자고등학교 정보 교과
+- 금정민 · 서울고덕초등학교 5학년 담임
+- **코드 라이선스**: 현재 저장소 루트에 LICENSE 파일이 없어 특정 코드 라이선스는 확정되지 않았습니다. 공개 제출 전 팀이 결정하고 저장소에 명시해야 합니다.
+- **문서 라이선스**: README, PRD, TRD, 작성 기록에 적용한 별도 문서 라이선스가 저장소에 명시되어 있지 않습니다. 공개 범위와 재사용 허용 범위를 팀이 결정해야 합니다.
+- **외부 자료 출처**: Next.js: https://nextjs.org/; React: https://react.dev/; Supabase: https://supabase.com/; Tailwind CSS: https://tailwindcss.com/; Lucide: https://lucide.dev/; Zod: https://zod.dev/; ExcelJS: https://github.com/exceljs/exceljs; pdf-lib: https://pdf-lib.js.org/; node-qrcode: https://github.com/soldair/node-qrcode; Google Gemini API: https://ai.google.dev/; Vercel: https://vercel.com/; 교육과정 JSON·브랜딩 자산은 원출처·라이선스 확인이 필요합니다.
+
+## 교사 개발자 윤리 자가점검
+
+- 응답 인원: 3명 / 팀원 3명
+
+| 원칙 | 평균 점수 |
+| --- | --- |
+| 학생 성장 최우선 | 4.7 / 5.0 |
+| 개인정보·데이터 보호 | 4.3 / 5.0 |
+| 책임과 출처 존중 | 4.7 / 5.0 |
+| 안전한 실험과 검증 | 4.7 / 5.0 |
+| 역할 경계 인식 | 4.8 / 5.0 |
+| 공공성 | 4.7 / 5.0 |
+| 투명성 및 설명 가능성 | 4.7 / 5.0 |
+| **전체 평균** | **4.7 / 5.0** |
+
+### 우리가 더한 약속
+
+- 김준오: 실제 학생 데이터를 사용하기 전 개인정보·권한·삭제 조건을 다시 확인하고, AI 도구의 한계와 근거를 학생·교사에게 설명하겠습니다.
+- 나혜진: 학생과 학부모 등 이 프로그램의 영향을 받는 사용자들에게 어떤 프로그램인지, 어떤 정보가 수집될 수 있는지 안내하기
+- 금정민: 8. 가정과 학교의 연계. 학부모에게 개발 내용 공유 및 긴밀한 협력
